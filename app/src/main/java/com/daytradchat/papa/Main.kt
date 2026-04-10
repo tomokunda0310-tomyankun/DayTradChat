@@ -1,5 +1,5 @@
 // /app/src/main/java/com/daytradchat/papa/Main.kt
-// ver 1.00-02
+// ver 1.00-05
 package com.daytradchat.papa
 
 import android.content.ClipData
@@ -30,7 +30,7 @@ class MainViewModel(
 
     val uiState: StateFlow<MainUiState> = combine(
         combine(
-            repository.observeRecentMessages(limit = 10),
+            repository.observeRecentMessages(limit = 50),
             repository.observeAllMessages(),
             repository.observeLogs(limit = 200),
             socketClientManager.connectionState,
@@ -47,8 +47,8 @@ class MainViewModel(
         configStore.hostFlow
     ) { interim, host ->
         MainUiState(
-            recentMessages = interim.recentMessages,
-            allMessages = interim.allMessages,
+            recentMessages = interim.recentMessages.filterNot { it.type == "pong" || it.type == "ping" },
+            allMessages = interim.allMessages.filterNot { it.type == "pong" || it.type == "ping" },
             logs = interim.logs,
             connectionState = interim.connectionState,
             lastPongTime = interim.lastPongTime,

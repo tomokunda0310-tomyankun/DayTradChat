@@ -1,5 +1,5 @@
 // /app/src/main/java/com/daytradchat/papa/network/SocketClientManager.kt
-// ver 1.00-02
+// ver 1.00-05
 package com.daytradchat.papa.network
 
 import com.daytradchat.papa.config.ConfigStore
@@ -12,6 +12,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json

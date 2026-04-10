@@ -1,5 +1,5 @@
 // /app/src/main/java/com/daytradchat/papa/data/ChatRepository.kt
-// ver 1.00-00
+// ver 1.00-05
 package com.daytradchat.papa.data
 
 import com.daytradchat.papa.network.IncomingEnvelope
@@ -17,6 +17,7 @@ class ChatRepository(
     fun observeLogs(limit: Int): Flow<List<AppLog>> = appLogDao.observeRecent(limit)
 
     suspend fun saveEnvelope(envelope: IncomingEnvelope) {
+        if (envelope.type == "pong" || envelope.type == "ping") return
         chatMessageDao.insert(
             ChatMessage(
                 type = envelope.type,

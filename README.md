@@ -1,4 +1,4 @@
-DayTradeChat v1.00-02
+DayTradeChat v1.00-05
 
 - Fix: add Material Components and AppCompat for XML theme resolution on AndroidIDE / Gradle builds.
 - Note: if origin URL contains YOUR_PAT, reset it before push.
@@ -38,6 +38,6 @@ git commit -m "init: DayTradeChat minimal client"
 ```
 
 
-## v1.00-02 適用メモ
+## v1.00-05 適用メモ
 - 既存プロジェクトへ上書きではなく、**古い `DayTradChat` フォルダを削除してから** このZIPを新規展開してください。
 - 特に `app/src/main/java/com/daytradchat/papa/DisplayApp.kt` のような旧配置ファイルが残ると、`Redeclaration` が再発します。

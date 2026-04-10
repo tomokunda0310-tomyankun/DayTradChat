@@ -1,5 +1,5 @@
 // /app/src/main/java/com/daytradchat/papa/ui/DisplayApp.kt
-// ver 1.00-02
+// ver 1.00-05
 package com.daytradchat.papa.ui
 
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -141,10 +141,10 @@ private fun AppTopBar(
     TopAppBar(
         title = {
             Column {
-                Text("DayTradeChat", fontSize = 15.sp, color = Color.White)
+                Text("DayTradeChat", fontSize = 13.sp, color = Color.White)
                 Text(
                     text = "${uiState.connectionState.name}  ${uiState.host}:${uiState.port}",
-                    fontSize = 11.sp,
+                    fontSize = 10.sp,
                     color = connectionColor(uiState.connectionState)
                 )
             }
@@ -163,26 +163,66 @@ private fun AppTopBar(
 @Composable
 private fun DashboardScreen(uiState: MainUiState, viewModel: MainViewModel) {
     val context = LocalContext.current
+    val dashboardMessages = buildDashboardMessages(uiState.allMessages)
+
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+            .padding(horizontal = 6.dp, vertical = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        StatusPanel(uiState)
+        repeat(3) { rowIndex ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                repeat(3) { colIndex ->
+                    val index = rowIndex * 3 + colIndex
+                    val message = dashboardMessages.getOrNull(index)
+                    Box(modifier = Modifier.weight(1f)) {
+                        if (message == null) {
+                            EmptySlotCard(index = index)
+                        } else {
+                            DashboardMessageCard(
+                                modifier = Modifier.fillMaxSize(),
+                                message = message,
+                                fixedSlot = index < 6,
+                                onCopyCode = { viewModel.copyCode(context, message) }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun EmptySlotCard(index: Int) {
+    Card(
+        modifier = Modifier.fillMaxSize(),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF111827)),
+        shape = RoundedCornerShape(12.dp)
+    ) {
         Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
+                .fillMaxSize()
+                .padding(8.dp),
+            verticalArrangement = Arrangement.SpaceBetween
         ) {
-            uiState.recentMessages.take(5).forEach { message ->
-                MessageCard(
-                    message = message,
-                    compact = false,
-                    onCopyCode = { viewModel.copyCode(context, message) }
-                )
-            }
+            Text(
+                text = if (index < 6) "固定" else "入替",
+                color = Color(0xFF64748B),
+                fontSize = 9.sp
+            )
+            Text(
+                text = "待機中",
+                color = Color(0xFF94A3B8),
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold
+            )
         }
     }
 }
@@ -190,31 +230,30 @@ private fun DashboardScreen(uiState: MainUiState, viewModel: MainViewModel) {
 @Composable
 private fun HistoryScreen(uiState: MainUiState, viewModel: MainViewModel) {
     val context = LocalContext.current
-    var signalOnly by rememberSaveable { mutableStateOf(false) }
+    var signalOnly by rememberSaveable { mutableStateOf(true) }
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(8.dp)
+            .padding(horizontal = 6.dp, vertical = 4.dp)
     ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             FilterChip(
                 selected = !signalOnly,
                 onClick = { signalOnly = false },
-                label = { Text("全件") }
+                label = { Text("全件", fontSize = 11.sp) }
             )
             FilterChip(
                 selected = signalOnly,
                 onClick = { signalOnly = true },
-                label = { Text("signalのみ") }
+                label = { Text("signalのみ", fontSize = 11.sp) }
             )
         }
-        Spacer(modifier = Modifier.height(8.dp))
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Spacer(modifier = Modifier.height(4.dp))
+        LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             val target = if (signalOnly) uiState.allMessages.filter { it.type == "signal" } else uiState.allMessages
             items(target, key = { it.id }) { message ->
-                MessageCard(
+                HistoryMessageRow(
                     message = message,
-                    compact = true,
                     onCopyCode = { viewModel.copyCode(context, message) }
                 )
             }
@@ -227,108 +266,165 @@ private fun LogScreen(uiState: MainUiState) {
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .padding(8.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp)
+            .padding(horizontal = 6.dp, vertical = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         items(uiState.logs, key = { it.id }) { log ->
-            Card(
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF16202B))
-            ) {
-                Column(modifier = Modifier.padding(8.dp)) {
-                    Text("${log.level}  ${log.createdAt}", color = Color(0xFF9CCBFF), fontSize = 10.sp)
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(log.message, color = Color.White, fontSize = 11.sp)
+            Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF16202B))) {
+                Column(modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)) {
+                    Text("${log.level}  ${log.createdAt}", color = Color(0xFF9CCBFF), fontSize = 9.sp)
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(log.message, color = Color.White, fontSize = 10.sp)
                 }
             }
         }
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun StatusPanel(uiState: MainUiState) {
+private fun DashboardMessageCard(
+    modifier: Modifier = Modifier,
+    message: ChatMessage,
+    fixedSlot: Boolean,
+    onCopyCode: () -> Unit
+) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF131D2A))
+        modifier = modifier.combinedClickable(onClick = onCopyCode, onLongClick = onCopyCode),
+        colors = CardDefaults.cardColors(containerColor = signalCardColor(message)),
+        shape = RoundedCornerShape(12.dp)
     ) {
-        Column(modifier = Modifier.padding(10.dp)) {
-            Text("接続状態", color = Color(0xFF8FB5FF), fontSize = 11.sp)
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(uiState.connectionState.name, color = connectionColor(uiState.connectionState), fontSize = 16.sp, fontWeight = FontWeight.Bold)
-            Spacer(modifier = Modifier.height(6.dp))
-            Text("HOST : ${uiState.host}", color = Color.White, fontSize = 11.sp)
-            Text("PORT : ${uiState.port}", color = Color.White, fontSize = 11.sp)
-            Text("LAST PONG : ${uiState.lastPongTime ?: "-"}", color = Color.White, fontSize = 11.sp)
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(8.dp),
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                Box(
+                    modifier = Modifier
+                        .size(7.dp)
+                        .background(signalDotColor(message), RoundedCornerShape(50))
+                )
+                Text(
+                    text = if (fixedSlot) "固定" else "入替",
+                    color = Color(0xFFD1D5DB),
+                    fontSize = 8.sp
+                )
+            }
+            Text(
+                text = message.title ?: (message.code ?: "-") ,
+                color = Color.White,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = message.body ?: message.reasonShort ?: "-",
+                color = Color(0xFFE5E7EB),
+                fontSize = 10.sp,
+                lineHeight = 12.sp,
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = buildMetaLine(message),
+                color = Color(0xFFBFDBFE),
+                fontSize = 9.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = message.sentAt ?: message.serverTime ?: "-",
+                color = Color(0xFFCBD5E1),
+                fontSize = 8.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun MessageCard(
-    message: ChatMessage,
-    compact: Boolean,
-    onCopyCode: () -> Unit
-) {
-    val isSignal = message.type == "signal"
-    val cardColor = when (message.signalType) {
-        "BUY" -> Color(0xFF193024)
-        "SELL" -> Color(0xFF341D21)
-        else -> if (isSignal) Color(0xFF1F2533) else Color(0xFF111A24)
-    }
+private fun HistoryMessageRow(message: ChatMessage, onCopyCode: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .combinedClickable(
-                onClick = onCopyCode,
-                onLongClick = onCopyCode
-            ),
-        colors = CardDefaults.cardColors(containerColor = cardColor),
-        shape = RoundedCornerShape(14.dp)
+            .combinedClickable(onClick = onCopyCode, onLongClick = onCopyCode),
+        colors = CardDefaults.cardColors(containerColor = signalCardColor(message)),
+        shape = RoundedCornerShape(10.dp)
     ) {
-        Column(modifier = Modifier.padding(10.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(8.dp)
-                        .background(connectionColorFromType(message.type), RoundedCornerShape(50))
-                )
-                Spacer(modifier = Modifier.size(6.dp))
+        Column(modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = message.title ?: message.type,
+                    text = message.code ?: "-",
                     color = Color.White,
-                    fontSize = if (compact) 12.sp else 13.sp,
-                    fontWeight = if (isSignal) FontWeight.Bold else FontWeight.Medium,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = message.signalType ?: message.type,
+                    color = signalDotColor(message),
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    text = message.sentAt ?: message.serverTime ?: "-",
+                    color = Color(0xFFCBD5E1),
+                    fontSize = 9.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
             }
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(2.dp))
             Text(
-                text = message.body ?: message.reasonShort ?: message.rawJson,
-                color = Color(0xFFE2E8F0),
-                fontSize = if (compact) 10.sp else 11.sp,
-                maxLines = if (compact) 3 else 4,
+                text = (message.body ?: message.reasonShort ?: message.rawJson).replace("\n", " "),
+                color = Color(0xFFE5E7EB),
+                fontSize = 10.sp,
+                lineHeight = 12.sp,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
-            Spacer(modifier = Modifier.height(6.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                SmallMeta(label = "code", value = message.code ?: "-")
-                SmallMeta(label = "score", value = message.signalScore?.toString() ?: "-")
-                SmallMeta(label = "price", value = message.price?.toString() ?: "-")
-            }
-            Spacer(modifier = Modifier.height(6.dp))
+            Spacer(modifier = Modifier.height(2.dp))
             Text(
-                text = message.sentAt ?: message.serverTime ?: message.createdAt.toString(),
-                color = Color(0xFF8AA0B8),
-                fontSize = 9.sp
+                text = buildMetaLine(message),
+                color = Color(0xFFBFDBFE),
+                fontSize = 9.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }
 }
 
-@Composable
-private fun SmallMeta(label: String, value: String) {
-    Text("$label:$value", color = Color(0xFF9FC6FF), fontSize = 9.sp)
+private fun buildDashboardMessages(allMessages: List<ChatMessage>): List<ChatMessage> {
+    val signalMessages = allMessages.filter { it.type == "signal" }
+    val fixed = mutableListOf<ChatMessage>()
+    val fixedCodes = linkedSetOf<String>()
+
+    for (message in signalMessages) {
+        val code = message.code ?: continue
+        if (fixedCodes.add(code)) {
+            fixed += message
+            if (fixed.size >= 6) break
+        }
+    }
+
+    val rotating = signalMessages.filter { message ->
+        val code = message.code
+        code == null || code !in fixedCodes
+    }.take(3)
+
+    return (fixed + rotating).take(9)
+}
+
+private fun buildMetaLine(message: ChatMessage): String {
+    val code = message.code ?: "-"
+    val score = message.signalScore?.toString() ?: "-"
+    val price = message.price?.toString() ?: "-"
+    return "code:$code  score:$score  price:$price"
 }
 
 @Composable
@@ -350,19 +446,11 @@ private fun SettingsDialog(
                     label = { Text("サーバホスト") },
                     singleLine = true
                 )
-                Text("ポートは固定: $port", fontSize = 12.sp)
+                Text("ポート固定: $port", fontSize = 12.sp)
             }
         },
-        confirmButton = {
-            TextButton(onClick = { onSave(host) }) {
-                Text("保存")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("閉じる")
-            }
-        }
+        confirmButton = { TextButton(onClick = { onSave(host) }) { Text("保存") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("閉じる") } }
     )
 }
 
@@ -376,13 +464,18 @@ private fun connectionColor(state: ConnectionState): Color {
     }
 }
 
-@Composable
-private fun connectionColorFromType(type: String): Color {
-    return when (type) {
-        "signal" -> Color(0xFFFFC857)
-        "server_hello" -> Color(0xFF60A5FA)
-        "pong" -> Color(0xFF34D399)
-        "ack" -> Color(0xFFA78BFA)
+private fun signalCardColor(message: ChatMessage): Color {
+    return when (message.signalType) {
+        "BUY" -> Color(0xFF3B1218)
+        "SELL" -> Color(0xFF0F2E1D)
+        else -> if (message.type == "signal") Color(0xFF1F2533) else Color(0xFF111A24)
+    }
+}
+
+private fun signalDotColor(message: ChatMessage): Color {
+    return when (message.signalType) {
+        "BUY" -> Color(0xFFFF8A80)
+        "SELL" -> Color(0xFF86EFAC)
         else -> Color(0xFF94A3B8)
     }
 }
