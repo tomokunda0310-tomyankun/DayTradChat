@@ -1,12 +1,25 @@
+// /app/src/main/java/com/daytradchat/papa/MainActivity.kt
+// ver 1.00-00
 package com.daytradchat.papa
 
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
+import com.daytradchat.papa.ui.DisplayApp
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : ComponentActivity() {
+
+    private val viewModel: MainViewModel by viewModels {
+        MainViewModel.Factory(applicationContext)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+        enableEdgeToEdge()
+        setContent {
+            DisplayApp(viewModel = viewModel)
+        }
     }
 }
-
