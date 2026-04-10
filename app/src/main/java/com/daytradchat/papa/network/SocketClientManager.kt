@@ -1,212 +1,173 @@
-// /app/src/main/java/com/daytradchat/papa/network/SocketClientManager.kt
-// ver 1.00-05
+//app/src/main/java/com/daytradchat/papa/network/SocketClientManager.kt
+//ver 1.00-13
+
 package com.daytradchat.papa.network
 
-import com.daytradchat.papa.config.ConfigStore
-import com.daytradchat.papa.data.ChatRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.isActive
-import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.withContext
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.coroutines.launch
+import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.BufferedWriter
 import java.io.InputStreamReader
 import java.io.OutputStreamWriter
 import java.net.InetSocketAddress
 import java.net.Socket
-import java.nio.charset.StandardCharsets
+import java.net.SocketException
+import java.util.concurrent.atomic.AtomicBoolean
 
 class SocketClientManager(
-    private val repository: ChatRepository,
-    private val configStore: ConfigStore
+    private val onStatusChanged: (String) -> Unit,
+    private val onRawMessage: (String) -> Unit,
+    private val onLog: (String) -> Unit
 ) {
-
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private var connectionJob: Job? = null
 
-    private val json = Json { ignoreUnknownKeys = true }
+    private var workerJob: Job? = null
+    private var pingJob: Job? = null
+    private var socket: Socket? = null
+    private var writer: BufferedWriter? = null
+    private val running = AtomicBoolean(false)
 
-    private val _connectionState = MutableStateFlow(ConnectionState.DISCONNECTED)
-    val connectionState: StateFlow<ConnectionState> = _connectionState
+    fun start(host: String, port: Int) {
+        if (running.get()) return
+        running.set(true)
 
-    private val _lastPongTime = MutableStateFlow<String?>(null)
-    val lastPongTime: StateFlow<String?> = _lastPongTime
-
-    fun start(host: String) {
-        if (host.isBlank()) return
-        if (connectionJob?.isActive == true) return
-        connectionJob = scope.launch {
-            connectLoop(host)
+        workerJob = scope.launch {
+            while (isActive && running.get()) {
+                connectLoop(host, port)
+                if (running.get()) {
+                    onStatusChanged("RECONNECTING")
+                    onLog("reconnect wait 5s")
+                    delay(5000)
+                }
+            }
         }
-    }
-
-    fun restart(host: String) {
-        stop()
-        start(host)
     }
 
     fun stop() {
-        connectionJob?.cancel()
-        connectionJob = null
-        _connectionState.value = ConnectionState.DISCONNECTED
-    }
+        running.set(false)
 
-    private suspend fun connectLoop(host: String) {
-        while (currentCoroutineContext().isActive) {
-            var socket: Socket? = null
+        scope.launch {
             try {
-                _connectionState.value = if (_connectionState.value == ConnectionState.DISCONNECTED) {
-                    ConnectionState.CONNECTING
-                } else {
-                    ConnectionState.RECONNECTING
-                }
-                repository.addLog("INFO", "CONNECT host=$host port=$FIXED_PORT")
-
-                socket = withContext(Dispatchers.IO) {
-                    Socket().apply {
-                        connect(InetSocketAddress(host, FIXED_PORT), CONNECT_TIMEOUT_MS)
-                        soTimeout = READ_TIMEOUT_MS
-                        keepAlive = true
-                    }
-                }
-
-                _connectionState.value = ConnectionState.CONNECTED
-                repository.addLog("INFO", "CONNECTED")
-
-                val reader = BufferedReader(InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8))
-                val writer = BufferedWriter(OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8))
-
-                sendRegister(writer)
-                val pingJob = launchPing(writer)
-
-                try {
-                    while (currentCoroutineContext().isActive) {
-                        val line = reader.readLine() ?: throw IllegalStateException("server closed")
-                        handleIncomingLine(line)
-                    }
-                } finally {
-                    pingJob.cancel()
-                }
-            } catch (e: Exception) {
-                repository.addLog("ERROR", e.message ?: e.javaClass.simpleName)
-            } finally {
-                runCatching { socket?.close() }
-                if (currentCoroutineContext().isActive) {
-                    _connectionState.value = ConnectionState.RECONNECTING
-                    repository.addLog("WARN", "RECONNECT in ${RECONNECT_DELAY_MS / 1000}s")
-                    delay(RECONNECT_DELAY_MS)
-                }
+                pingJob?.cancel()
+                pingJob = null
+                closeSocket()
+            } catch (_: Exception) {
             }
         }
     }
 
-    private fun launchPing(writer: BufferedWriter): Job {
-        return scope.launch {
-            while (isActive) {
-                delay(PING_INTERVAL_MS)
-                sendLine(writer, PING_JSON)
-                repository.addLog("DEBUG", "PING sent")
+    private suspend fun connectLoop(host: String, port: Int) {
+        onStatusChanged("CONNECTING")
+        onLog("connecting $host:$port")
+
+        try {
+            closeSocket()
+
+            val s = Socket()
+            s.keepAlive = true
+            s.tcpNoDelay = true
+            s.connect(InetSocketAddress(host, port), 8000)
+
+            val r = BufferedReader(InputStreamReader(s.getInputStream(), Charsets.UTF_8))
+            val w = BufferedWriter(OutputStreamWriter(s.getOutputStream(), Charsets.UTF_8))
+
+            socket = s
+            writer = w
+
+            onStatusChanged("CONNECTED")
+            onLog("connected $host:$port")
+
+            sendRegister()
+
+            startPingLoop()
+
+            while (scope.isActive && running.get() && !s.isClosed) {
+                val line = r.readLine() ?: break
+                if (line.isNotBlank()) {
+                    onRawMessage(line)
+                }
+            }
+
+            onLog("socket closed by peer")
+        } catch (e: SocketException) {
+            onLog("socket error: ${e.message}")
+        } catch (e: Exception) {
+            onLog("connect error: ${e.javaClass.simpleName}: ${e.message}")
+        } finally {
+            try {
+                pingJob?.cancel()
+                pingJob = null
+                closeSocket()
+            } catch (_: Exception) {
+            }
+            if (running.get()) {
+                onStatusChanged("DISCONNECTED")
             }
         }
     }
 
-    private suspend fun handleIncomingLine(line: String) {
-        val envelope = runCatching { parseEnvelope(line) }.getOrElse {
-            repository.addLog("WARN", "JSON parse failed, raw saved")
-            IncomingEnvelope(type = "raw_message", rawJson = line, body = line)
-        }
+    private fun startPingLoop() {
+        pingJob?.cancel()
 
-        if (envelope.type == "pong") {
-            _lastPongTime.value = envelope.serverTime ?: envelope.sentAt ?: "received"
-        }
-        repository.saveEnvelope(envelope)
-    }
-
-    private suspend fun sendRegister(writer: BufferedWriter) {
-        sendLine(writer, REGISTER_JSON)
-        repository.addLog("INFO", "REGISTER sent")
-    }
-
-    private suspend fun sendLine(writer: BufferedWriter, line: String) {
-        withContext(Dispatchers.IO) {
-            writer.write(line)
-            writer.newLine()
-            writer.flush()
+        pingJob = scope.launch {
+            while (isActive && running.get()) {
+                delay(30000)
+                sendPing()
+            }
         }
     }
 
-    private fun parseEnvelope(line: String): IncomingEnvelope {
-        val root = json.parseToJsonElement(line).jsonObject
-        val type = root.string("type").ifBlank { "unknown" }
-        val data = root["data"]?.jsonObject
-
-        return IncomingEnvelope(
-            type = type,
-            title = root.string("title").ifBlank { null },
-            body = root.string("body").ifBlank { null },
-            sentAt = root.string("sent_at").ifBlank { null },
-            serverTime = root.string("server_time").ifBlank { null },
-            rawJson = line,
-            code = data?.string("code")?.ifBlank { null },
-            signalType = data?.string("signal_type")?.ifBlank { null },
-            signalScore = data?.int("signal_score"),
-            marketBias = data?.string("market_bias")?.ifBlank { null },
-            reasonShort = data?.string("reason_short")?.ifBlank { null },
-            price = data?.double("price")
-        )
+    private fun sendRegister() {
+        try {
+            val json = JSONObject().apply {
+                put("type", "register")
+                put("client_name", "android_client")
+                put("client_version", "1.0.0")
+            }
+            sendLine(json.toString())
+            onLog("register sent")
+        } catch (e: Exception) {
+            onLog("register send error: ${e.message}")
+        }
     }
 
-    private fun JsonObject.string(key: String): String =
-        this[key]?.jsonPrimitive?.contentOrNull.orEmpty()
+    private fun sendPing() {
+        try {
+            val json = JSONObject().apply {
+                put("type", "ping")
+            }
+            sendLine(json.toString())
+            onLog("ping sent")
+        } catch (e: Exception) {
+            onLog("ping send error: ${e.message}")
+        }
+    }
 
-    private fun JsonObject.int(key: String): Int? =
-        this[key]?.jsonPrimitive?.contentOrNull?.toIntOrNull()
+    private fun sendLine(text: String) {
+        val w = writer ?: return
+        w.write(text)
+        w.write("\n")
+        w.flush()
+    }
 
-    private fun JsonObject.double(key: String): Double? =
-        this[key]?.jsonPrimitive?.contentOrNull?.toDoubleOrNull()
+    private fun closeSocket() {
+        try {
+            writer?.close()
+        } catch (_: Exception) {
+        }
+        writer = null
 
-    companion object {
-        const val FIXED_PORT = 5001
-        private const val CONNECT_TIMEOUT_MS = 10_000
-        private const val READ_TIMEOUT_MS = 65_000
-        private const val RECONNECT_DELAY_MS = 5_000L
-        private const val PING_INTERVAL_MS = 30_000L
-        private const val REGISTER_JSON =
-            "{\"type\":\"register\",\"client_name\":\"android_client\",\"client_version\":\"1.0.0\"}"
-        private const val PING_JSON = "{\"type\":\"ping\"}"
+        try {
+            socket?.close()
+        } catch (_: Exception) {
+        }
+        socket = null
     }
 }
-
-enum class ConnectionState {
-    CONNECTING,
-    CONNECTED,
-    DISCONNECTED,
-    RECONNECTING
-}
-
-data class IncomingEnvelope(
-    val type: String,
-    val title: String? = null,
-    val body: String? = null,
-    val sentAt: String? = null,
-    val serverTime: String? = null,
-    val rawJson: String,
-    val code: String? = null,
-    val signalType: String? = null,
-    val signalScore: Int? = null,
-    val marketBias: String? = null,
-    val reasonShort: String? = null,
-    val price: Double? = null
-)
