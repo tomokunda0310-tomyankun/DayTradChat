@@ -1,5 +1,5 @@
 // /app/src/main/java/com/daytradchat/papa/network/SocketClientManager.kt
-// ver 1.00-00
+// ver 1.00-02
 package com.daytradchat.papa.network
 
 import com.daytradchat.papa.config.ConfigStore
@@ -11,8 +11,8 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -63,7 +63,7 @@ class SocketClientManager(
     }
 
     private suspend fun connectLoop(host: String) {
-        while (scope.isActive) {
+        while (currentCoroutineContext().isActive) {
             var socket: Socket? = null
             try {
                 _connectionState.value = if (_connectionState.value == ConnectionState.DISCONNECTED) {
@@ -91,7 +91,7 @@ class SocketClientManager(
                 val pingJob = launchPing(writer)
 
                 try {
-                    while (isActive) {
+                    while (currentCoroutineContext().isActive) {
                         val line = reader.readLine() ?: throw IllegalStateException("server closed")
                         handleIncomingLine(line)
                     }
@@ -102,7 +102,7 @@ class SocketClientManager(
                 repository.addLog("ERROR", e.message ?: e.javaClass.simpleName)
             } finally {
                 runCatching { socket?.close() }
-                if (scope.isActive) {
+                if (currentCoroutineContext().isActive) {
                     _connectionState.value = ConnectionState.RECONNECTING
                     repository.addLog("WARN", "RECONNECT in ${RECONNECT_DELAY_MS / 1000}s")
                     delay(RECONNECT_DELAY_MS)

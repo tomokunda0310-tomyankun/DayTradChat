@@ -1,5 +1,5 @@
 // /app/src/main/java/com/daytradchat/papa/MainActivity.kt
-// ver 1.00-01
+// ver 1.00-02
 package com.daytradchat.papa
 
 import android.os.Bundle

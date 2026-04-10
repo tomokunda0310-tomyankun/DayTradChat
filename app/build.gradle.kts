@@ -1,5 +1,5 @@
 // /app/build.gradle.kts
-// ver 1.00-01
+// ver 1.00-02
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")

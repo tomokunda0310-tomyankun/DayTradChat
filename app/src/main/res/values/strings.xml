@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- /app/src/main/res/values/strings.xml -->
-<!-- ver 1.00-00 -->
+<!-- ver 1.00-02 -->
 <resources>
     <string name="app_name">DayTradeChat</string>
 </resources>

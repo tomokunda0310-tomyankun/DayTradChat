@@ -1,5 +1,5 @@
 // /app/src/main/java/com/daytradchat/papa/Main.kt
-// ver 1.00-01
+// ver 1.00-02
 package com.daytradchat.papa
 
 import android.content.ClipData
@@ -16,7 +16,6 @@ import com.daytradchat.papa.data.ChatRepository
 import com.daytradchat.papa.network.ConnectionState
 import com.daytradchat.papa.network.SocketClientManager
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
@@ -30,19 +29,29 @@ class MainViewModel(
 ) : ViewModel() {
 
     val uiState: StateFlow<MainUiState> = combine(
-        repository.observeRecentMessages(limit = 10),
-        repository.observeAllMessages(),
-        repository.observeLogs(limit = 200),
-        socketClientManager.connectionState,
-        socketClientManager.lastPongTime,
+        combine(
+            repository.observeRecentMessages(limit = 10),
+            repository.observeAllMessages(),
+            repository.observeLogs(limit = 200),
+            socketClientManager.connectionState,
+            socketClientManager.lastPongTime
+        ) { recentMessages, allMessages, logs, state, lastPong ->
+            InterimUiState(
+                recentMessages = recentMessages,
+                allMessages = allMessages,
+                logs = logs,
+                connectionState = state,
+                lastPongTime = lastPong
+            )
+        },
         configStore.hostFlow
-    ) { recentMessages, allMessages, logs, state, lastPong, host ->
+    ) { interim, host ->
         MainUiState(
-            recentMessages = recentMessages,
-            allMessages = allMessages,
-            logs = logs,
-            connectionState = state,
-            lastPongTime = lastPong,
+            recentMessages = interim.recentMessages,
+            allMessages = interim.allMessages,
+            logs = interim.logs,
+            connectionState = interim.connectionState,
+            lastPongTime = interim.lastPongTime,
             host = host,
             port = SocketClientManager.FIXED_PORT
         )
@@ -54,7 +63,7 @@ class MainViewModel(
 
     init {
         viewModelScope.launch {
-            configStore.hostFlow.distinctUntilChanged().collect { host ->
+            configStore.hostFlow.collect { host ->
                 if (host.isBlank()) {
                     socketClientManager.stop()
                 } else {
@@ -106,6 +115,14 @@ class MainViewModel(
         }
     }
 }
+
+private data class InterimUiState(
+    val recentMessages: List<ChatMessage>,
+    val allMessages: List<ChatMessage>,
+    val logs: List<com.daytradchat.papa.data.AppLog>,
+    val connectionState: ConnectionState,
+    val lastPongTime: String?
+)
 
 data class MainUiState(
     val recentMessages: List<ChatMessage> = emptyList(),
