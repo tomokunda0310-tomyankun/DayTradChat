@@ -1,3 +1,8 @@
+DayTradeChat v1.00-01
+
+- Fix: add Material Components and AppCompat for XML theme resolution on AndroidIDE / Gradle builds.
+- Note: if origin URL contains YOUR_PAT, reset it before push.
+
 # DayTradeChat
 
 Android 14 / Kotlin / Compose / Room ベースの受信専用デイトレ通知チャットクライアント最小構成です。
