@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- app/src/main/res/layout/fragment_settings.xml -->
-<!--  ver 1.13-02 -->
+<!-- ver 2.13-13 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -9,8 +9,18 @@
     android:padding="12dp">
 
     <TextView
+        android:id="@+id/textVersion"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:text="ver 2.13-13"
+        android:textColor="@color/text_secondary"
+        android:textSize="12sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
         android:text="サーバIP / ホスト"
         android:textColor="@color/text_primary"
         android:textSize="14sp"

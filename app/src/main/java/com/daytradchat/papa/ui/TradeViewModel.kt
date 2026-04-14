@@ -1,11 +1,12 @@
 //app/src/main/java/com/daytradchat/papa/ui/TradeViewModel.kt
-//ver 2.13-08
+//ver 2.13-13
 
 package com.daytradchat.papa.ui
 
 import androidx.lifecycle.ViewModel
 import com.daytradchat.papa.model.LogLineUiModel
 import com.daytradchat.papa.model.SignalCardUiModel
+import com.daytradchat.papa.model.SignalHistoryUiModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -13,6 +14,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.UUID
+import kotlin.math.roundToLong
 
 class TradeViewModel : ViewModel() {
 
@@ -43,6 +45,8 @@ class TradeViewModel : ViewModel() {
     private val _systemLogItems = MutableStateFlow<List<LogLineUiModel>>(emptyList())
     val systemLogItems: StateFlow<List<LogLineUiModel>> = _systemLogItems.asStateFlow()
 
+    private val historyMap = linkedMapOf<String, MutableList<SignalHistoryUiModel>>()
+
     fun startSocket() {
         _statusLeft.value = "connected"
         _statusRight.value = timeFormat.format(Date())
@@ -51,8 +55,9 @@ class TradeViewModel : ViewModel() {
         appendSystemLog("startSocket")
         appendLog("socket started")
 
-        // 仮表示データ
-        _signalItems.value = buildDummySignals()
+        val signals = buildDummySignals()
+        _signalItems.value = signals
+        recordHistory(signals)
     }
 
     fun stopSocket() {
@@ -88,6 +93,29 @@ class TradeViewModel : ViewModel() {
         startSocket()
     }
 
+    fun buildHistoryDialogText(code: String): String {
+        val rows = historyMap[code].orEmpty()
+        if (rows.isEmpty()) {
+            return "履歴なし"
+        }
+
+        val sparkline = buildSparkline(rows.map { it.price })
+        val lines = mutableListOf<String>()
+        lines += "価格推移"
+        lines += sparkline
+        lines += ""
+        lines += "時刻        価格      前日比   score  内容"
+
+        rows.asReversed().take(10).forEach { row ->
+            val time = row.time.padEnd(8, ' ')
+            val price = formatCompact(row.price).padStart(8, ' ')
+            val rate = "${formatSigned(row.changeRate)}%".padStart(7, ' ')
+            val score = row.score.toString().padStart(5, ' ')
+            lines += "$time  $price  $rate  $score  ${row.reasonShort}"
+        }
+        return lines.joinToString("\n")
+    }
+
     private fun appendLog(text: String) {
         val next = mutableListOf<LogLineUiModel>()
         next.add(
@@ -112,117 +140,36 @@ class TradeViewModel : ViewModel() {
         _systemLogItems.value = next.take(200)
     }
 
+    private fun recordHistory(items: List<SignalCardUiModel>) {
+        items.forEach { item ->
+            val list = historyMap.getOrPut(item.code) { mutableListOf() }
+            list.add(
+                SignalHistoryUiModel(
+                    time = item.updatedAt.takeLast(8),
+                    price = item.price,
+                    changeRate = item.changeRate,
+                    score = item.score,
+                    reasonShort = item.reasonShort
+                )
+            )
+            while (list.size > 30) {
+                list.removeAt(0)
+            }
+        }
+    }
+
     private fun buildDummySignals(): List<SignalCardUiModel> {
         val now = shortTimeFormat.format(Date())
         return listOf(
-            SignalCardUiModel(
-                slotId = "0",
-                code = "NIKKEI225",
-                name = "日経平均",
-                signalType = "INDEX",
-                score = 0,
-                price = 57895.24,
-                changeRate = -2.34,
-                reasonShort = "地合い情報",
-                updatedAt = now,
-                isEmpty = false
-            ),
-            SignalCardUiModel(
-                slotId = "1",
-                code = "9434",
-                name = "ソフトバンク",
-                signalType = "SKIP",
-                score = 0,
-                price = 214.8,
-                changeRate = 0.0,
-                reasonShort = "VWAP同値 / 板拮抗",
-                updatedAt = now,
-                isEmpty = false
-            ),
-            SignalCardUiModel(
-                slotId = "2",
-                code = "3103",
-                name = "ユニチカ",
-                signalType = "BUY",
-                score = 4,
-                price = 2161.0,
-                changeRate = 0.0,
-                reasonShort = "VWAP上 / 板拮抗 / スプレッド良",
-                updatedAt = now,
-                isEmpty = false
-            ),
-            SignalCardUiModel(
-                slotId = "3",
-                code = "8306",
-                name = "三菱ＵＦＪフィナンシャル・グループ",
-                signalType = "SKIP",
-                score = 0,
-                price = 2852.5,
-                changeRate = 0.0,
-                reasonShort = "VWAP下 / 板拮抗 / スプレッド良",
-                updatedAt = now,
-                isEmpty = false
-            ),
-            SignalCardUiModel(
-                slotId = "4",
-                code = "7211",
-                name = "三菱自動車工業",
-                signalType = "BUY",
-                score = 4,
-                price = 314.3,
-                changeRate = 0.0,
-                reasonShort = "VWAP上 / 板拮抗 / スプレッド良",
-                updatedAt = now,
-                isEmpty = false
-            ),
-            SignalCardUiModel(
-                slotId = "5",
-                code = "3436",
-                name = "ＳＵＭＣＯ",
-                signalType = "BUY",
-                score = 4,
-                price = 2202.0,
-                changeRate = 0.0,
-                reasonShort = "VWAP上 / 板拮抗 / スプレッド良",
-                updatedAt = now,
-                isEmpty = false
-            ),
-            SignalCardUiModel(
-                slotId = "6",
-                code = "7201",
-                name = "日産自動車",
-                signalType = "SKIP",
-                score = 0,
-                price = 349.9,
-                changeRate = 0.0,
-                reasonShort = "VWAP下 / 板拮抗 / スプレッド良",
-                updatedAt = now,
-                isEmpty = false
-            ),
-            SignalCardUiModel(
-                slotId = "7",
-                code = "8136",
-                name = "サンリオ",
-                signalType = "BUY",
-                score = 4,
-                price = 993.2,
-                changeRate = 0.0,
-                reasonShort = "VWAP上 / 板拮抗 / スプレッド良",
-                updatedAt = now,
-                isEmpty = false
-            ),
-            SignalCardUiModel(
-                slotId = "8",
-                code = "3350",
-                name = "メタプラネット",
-                signalType = "SKIP",
-                score = -1,
-                price = 329.0,
-                changeRate = 0.0,
-                reasonShort = "VWAP下 / 板拮抗 / 出来高大",
-                updatedAt = now,
-                isEmpty = false
-            )
+            SignalCardUiModel("0", "NIKKEI225", "日経平均", "INDEX", 0, 57895.24, -2.34, "地合い情報", now, false),
+            SignalCardUiModel("1", "9434", "ソフトバンク", "SKIP", 0, 214.8, 0.0, "VWAP同値 / 板拮抗", now, false),
+            SignalCardUiModel("2", "3103", "ユニチカ", "BUY", 4, 2161.0, 0.0, "VWAP上 / 板拮抗 / スプレッド良", now, false),
+            SignalCardUiModel("3", "8306", "三菱ＵＦＪフィナンシャル・グループ", "SKIP", 0, 2852.5, 0.0, "VWAP下 / 板拮抗 / スプレッド良", now, false),
+            SignalCardUiModel("4", "7211", "三菱自動車工業", "BUY", 4, 314.3, 0.0, "VWAP上 / 板拮抗 / スプレッド良", now, false),
+            SignalCardUiModel("5", "3436", "ＳＵＭＣＯ", "BUY", 4, 2202.0, 0.0, "VWAP上 / 板拮抗 / スプレッド良", now, false),
+            SignalCardUiModel("6", "7201", "日産自動車", "SKIP", 0, 349.9, 0.0, "VWAP下 / 板拮抗 / スプレッド良", now, false),
+            SignalCardUiModel("7", "8136", "サンリオ", "BUY", 4, 993.2, 0.0, "VWAP上 / 板拮抗 / スプレッド良", now, false),
+            SignalCardUiModel("8", "3350", "メタプラネット", "SKIP", -1, 329.0, 0.0, "VWAP下 / 板拮抗 / 出来高大", now, false)
         )
     }
 
@@ -240,6 +187,31 @@ class TradeViewModel : ViewModel() {
                 updatedAt = "",
                 isEmpty = true
             )
+        }
+    }
+
+    private fun buildSparkline(values: List<Double>): String {
+        if (values.isEmpty()) return "-"
+        val chars = listOf("▁", "▂", "▃", "▄", "▅", "▆", "▇", "█")
+        val min = values.minOrNull() ?: 0.0
+        val max = values.maxOrNull() ?: 0.0
+        if (min == max) return List(values.size) { "▄" }.joinToString("")
+        return values.joinToString("") { value ->
+            val ratio = (value - min) / (max - min)
+            val index = (ratio * (chars.size - 1)).roundToLong().toInt().coerceIn(0, chars.size - 1)
+            chars[index]
+        }
+    }
+
+    private fun formatCompact(v: Double): String {
+        return if (v == v.toLong().toDouble()) v.toLong().toString() else "%.1f".format(v)
+    }
+
+    private fun formatSigned(v: Double): String {
+        return when {
+            v > 0.0 -> "+%.1f".format(v)
+            v < 0.0 -> "%.1f".format(v)
+            else -> "0.0"
         }
     }
 }

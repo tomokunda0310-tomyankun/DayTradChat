@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- app/src/main/res/layout/activity_main.xml -->
-<!--  ver 1.13-02 -->
+<!-- ver 2.13-12 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
@@ -14,16 +14,19 @@
         android:background="@color/bg_surface"
         android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:padding="10dp">
+        android:paddingStart="10dp"
+        android:paddingTop="6dp"
+        android:paddingEnd="10dp"
+        android:paddingBottom="4dp">
 
         <TextView
             android:id="@+id/textStatusLeft"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="接続"
+            android:text="connected"
             android:textColor="@color/text_primary"
-            android:textSize="15sp"
+            android:textSize="13sp"
             android:textStyle="bold" />
 
         <TextView
@@ -32,7 +35,7 @@
             android:layout_height="wrap_content"
             android:text="2026/04/14 12:30:52"
             android:textColor="@color/text_primary"
-            android:textSize="13sp"
+            android:textSize="12sp"
             android:textStyle="bold" />
     </LinearLayout>
 
@@ -42,21 +45,31 @@
         android:layout_height="wrap_content"
         android:background="@color/bg_surface"
         android:paddingStart="10dp"
+        android:paddingTop="0dp"
         android:paddingEnd="10dp"
-        android:paddingBottom="10dp"
-        android:text="osaka-cosplayers.net:5001"
+        android:paddingBottom="4dp"
+        android:text="host: osaka-cosplayers.net:5001"
         android:textColor="@color/text_primary"
-        android:textSize="13sp" />
+        android:textSize="12sp" />
 
     <com.google.android.material.tabs.TabLayout
         android:id="@+id/tabLayout"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="40dp"
         android:background="@color/bg_panel"
+        android:minHeight="40dp"
+        app:tabGravity="fill"
+        app:tabIndicatorColor="@color/text_primary"
+        app:tabIndicatorFullWidth="false"
+        app:tabInlineLabel="true"
         app:tabMode="fixed"
+        app:tabPaddingBottom="2dp"
+        app:tabPaddingEnd="0dp"
+        app:tabPaddingStart="0dp"
+        app:tabPaddingTop="2dp"
+        app:tabRippleColor="@android:color/transparent"
         app:tabTextColor="@color/text_secondary"
-        app:tabSelectedTextColor="@color/text_primary"
-        app:tabIndicatorColor="@color/text_primary" />
+        app:tabSelectedTextColor="@color/text_primary" />
 
     <androidx.viewpager2.widget.ViewPager2
         android:id="@+id/viewPager"

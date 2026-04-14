@@ -1,5 +1,5 @@
 //app/src/main/java/com/daytradchat/papa/ui/SettingsFragment.kt
-//ver 2.13-09
+//ver 2.13-13
 
 package com.daytradchat.papa.ui
 
@@ -33,6 +33,7 @@ class SettingsFragment : Fragment() {
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        binding.textVersion.text = "ver 2.13-13"
         binding.textPort.text = "Port: ${SocketConfig.SERVER_PORT}"
 
         binding.buttonSaveReconnect.setOnClickListener {

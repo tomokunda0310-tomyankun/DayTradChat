@@ -1,5 +1,5 @@
 //app/src/main/java/com/daytradchat/papa/ui/SignalGridAdapter.kt
-//ver 2.13-10
+//ver 2.13-13
 
 package com.daytradchat.papa.ui
 
@@ -15,13 +15,14 @@ import com.daytradchat.papa.databinding.ItemSignalGridBinding
 import com.daytradchat.papa.model.SignalCardUiModel
 import kotlin.math.abs
 
-class SignalGridAdapter :
-    ListAdapter<SignalCardUiModel, SignalGridAdapter.SignalViewHolder>(DiffCallback) {
+class SignalGridAdapter(
+    private val onItemClick: (SignalCardUiModel) -> Unit = {}
+) : ListAdapter<SignalCardUiModel, SignalGridAdapter.SignalViewHolder>(DiffCallback) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): SignalViewHolder {
         val binding =
             ItemSignalGridBinding.inflate(LayoutInflater.from(parent.context), parent, false)
-        return SignalViewHolder(binding)
+        return SignalViewHolder(binding, onItemClick)
     }
 
     override fun onBindViewHolder(holder: SignalViewHolder, position: Int) {
@@ -30,7 +31,8 @@ class SignalGridAdapter :
     }
 
     class SignalViewHolder(
-        private val binding: ItemSignalGridBinding
+        private val binding: ItemSignalGridBinding,
+        private val onItemClick: (SignalCardUiModel) -> Unit
     ) : RecyclerView.ViewHolder(binding.root) {
 
         fun bind(item: SignalCardUiModel) {
@@ -110,6 +112,10 @@ class SignalGridAdapter :
                 binding.textSub1.setTextSize(TypedValue.COMPLEX_UNIT_SP, 8f)
                 binding.textSub2.setTextSize(TypedValue.COMPLEX_UNIT_SP, 7f)
                 binding.textUpdatedAt.setTextSize(TypedValue.COMPLEX_UNIT_SP, 8f)
+            }
+
+            binding.root.setOnClickListener {
+                onItemClick(item)
             }
         }
 
