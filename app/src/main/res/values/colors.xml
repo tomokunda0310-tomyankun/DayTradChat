@@ -1,7 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- app/src/main/res/values/colors.xml -->
 <resources>
-    <color name="colorPrimary">#008577</color>
-    <color name="colorPrimaryDark">#00574B</color>
-    <color name="colorAccent">#D81B60</color>
+    <color name="colorPrimary">#184B9B</color>
+    <color name="colorPrimaryDark">#0F2A55</color>
+    <color name="colorAccent">#165A24</color>
+    <color name="bg_app">#101010</color>
+    <color name="bg_surface">#1D1D1D</color>
+    <color name="bg_panel">#262626</color>
+    <color name="text_primary">#F1F1F1</color>
+    <color name="text_secondary">#C7C7C7</color>
+    <color name="buy_bg">#D9F5DF</color>
+    <color name="sell_bg">#F9DEDC</color>
+    <color name="skip_bg">#E6E6E6</color>
+    <color name="index_bg">#D9E8FF</color>
+    <color name="buy_text">#165A24</color>
+    <color name="sell_text">#8D1F1F</color>
+    <color name="skip_text">#555555</color>
+    <color name="index_text">#184B9B</color>
 </resources>
-
