@@ -1,5 +1,6 @@
 //app/src/main/java/com/daytradchat/papa/MainActivity.kt
-//ver 2.13-12
+// ver 2.13-15
+
 package com.daytradchat.papa
 
 import android.os.Bundle
@@ -14,12 +15,10 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.daytradchat.papa.databinding.ActivityMainBinding
 import com.daytradchat.papa.ui.MainPagerAdapter
 import com.daytradchat.papa.ui.TradeViewModel
-import com.google.android.material.tabs.TabLayout
 import com.google.android.material.tabs.TabLayoutMediator
 import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
-
     private lateinit var binding: ActivityMainBinding
     private val viewModel: TradeViewModel by viewModels()
 
@@ -39,57 +38,33 @@ class MainActivity : AppCompatActivity() {
             }
         }.attach()
 
+        // ★確実にタブ文字サイズ変更
         binding.tabLayout.post {
-            applyTabTextSize(binding.tabLayout, 9f)
+            val vg = binding.tabLayout.getChildAt(0) as? ViewGroup
+            vg?.let {
+                for (i in 0 until it.childCount) {
+                    val tabView = it.getChildAt(i) as? ViewGroup
+                    tabView?.let { tvg ->
+                        for (j in 0 until tvg.childCount) {
+                            val v = tvg.getChildAt(j)
+                            if (v is TextView) {
+                                v.setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
+                            }
+                        }
+                    }
+                }
+            }
         }
-
-        binding.tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
-            override fun onTabSelected(tab: TabLayout.Tab) {
-                binding.tabLayout.post { applyTabTextSize(binding.tabLayout, 9f) }
-            }
-
-            override fun onTabUnselected(tab: TabLayout.Tab) {
-                binding.tabLayout.post { applyTabTextSize(binding.tabLayout, 9f) }
-            }
-
-            override fun onTabReselected(tab: TabLayout.Tab) {
-                binding.tabLayout.post { applyTabTextSize(binding.tabLayout, 9f) }
-            }
-        })
 
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                launch {
-                    viewModel.statusLeft.collect { binding.textStatusLeft.text = it }
-                }
-                launch {
-                    viewModel.statusRight.collect { binding.textStatusRight.text = it }
-                }
-                launch {
-                    viewModel.hostLine.collect { binding.textHostLine.text = it }
-                }
+                launch { viewModel.statusLeft.collect { binding.textStatusLeft.text = it } }
+                launch { viewModel.statusRight.collect { binding.textStatusRight.text = it } }
+                launch { viewModel.hostLine.collect { binding.textHostLine.text = it } }
             }
         }
 
         viewModel.startSocket()
-    }
-
-    private fun applyTabTextSize(tabLayout: TabLayout, sizeSp: Float) {
-        val slidingTabIndicator = tabLayout.getChildAt(0) as? ViewGroup ?: return
-        for (i in 0 until slidingTabIndicator.childCount) {
-            val tabView = slidingTabIndicator.getChildAt(i) as? ViewGroup ?: continue
-            applyTextSizeRecursive(tabView, sizeSp)
-        }
-    }
-
-    private fun applyTextSizeRecursive(parent: ViewGroup, sizeSp: Float) {
-        for (i in 0 until parent.childCount) {
-            val child = parent.getChildAt(i)
-            when (child) {
-                is TextView -> child.setTextSize(TypedValue.COMPLEX_UNIT_SP, sizeSp)
-                is ViewGroup -> applyTextSizeRecursive(child, sizeSp)
-            }
-        }
     }
 
     override fun onDestroy() {

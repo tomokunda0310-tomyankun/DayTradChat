@@ -1,86 +1,49 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- app/src/main/res/layout/item_signal_grid.xml -->
-<!-- ver 2.13-10 -->
+<!-- item_signal_grid -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/rootSignal"
     android:layout_width="match_parent"
-    android:layout_height="188dp"
+    android:layout_height="200dp"
     android:layout_margin="4dp"
     android:background="@color/bg_surface"
     android:orientation="vertical"
-    android:padding="8dp">
+    android:padding="6dp">
 
     <TextView
-        android:id="@+id/textCode"
+        android:id="@+id/textCodeName"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:ellipsize="end"
-        android:maxLines="1"
-        android:text="7203"
-        android:textColor="@color/text_primary"
-        android:textSize="14sp"
+        android:text="7203 トヨタ"
+        android:textSize="13sp"
         android:textStyle="bold" />
-
-    <TextView
-        android:id="@+id/textName"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="1dp"
-        android:ellipsize="end"
-        android:maxLines="1"
-        android:text="トヨタ自動車"
-        android:textColor="@color/text_primary"
-        android:textSize="8sp" />
 
     <TextView
         android:id="@+id/textPrice"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
-        android:text="2875.0"
-        android:textColor="@color/text_primary"
-        android:textSize="23sp"
+        android:text="2875"
+        android:textSize="22sp"
         android:textStyle="bold" />
 
     <TextView
         android:id="@+id/textDelta"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="2dp"
-        android:text="前日比 0.0%"
-        android:textColor="@color/text_primary"
-        android:textSize="10sp"
-        android:textStyle="bold" />
+        android:text="前日比 +0.0%"
+        android:textSize="9sp" />
 
     <TextView
         android:id="@+id/textSub1"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="2dp"
-        android:ellipsize="end"
-        android:maxLines="1"
-        android:text="score 0"
-        android:textColor="@color/text_secondary"
-        android:textSize="8sp" />
+        android:text="score"
+        android:textSize="7sp" />
 
     <TextView
         android:id="@+id/textSub2"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="1dp"
-        android:ellipsize="end"
-        android:maxLines="3"
-        android:text="VWAP下 / 売り板優勢 / 下落強い"
-        android:textColor="@color/text_secondary"
-        android:textSize="7sp" />
-
-    <TextView
-        android:id="@+id/textUpdatedAt"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="2dp"
-        android:gravity="end"
-        android:text="12:30:52"
-        android:textColor="@color/text_secondary"
-        android:textSize="8sp" />
+        android:maxLines="4"
+        android:text="detail"
+        android:textSize="6sp" />
 </LinearLayout>

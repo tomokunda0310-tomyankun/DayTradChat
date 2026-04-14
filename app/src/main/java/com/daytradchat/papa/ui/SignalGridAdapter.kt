@@ -1,5 +1,5 @@
 //app/src/main/java/com/daytradchat/papa/ui/SignalGridAdapter.kt
-//ver 2.13-13
+//ver 2.13-16
 
 package com.daytradchat.papa.ui
 
@@ -26,8 +26,7 @@ class SignalGridAdapter(
     }
 
     override fun onBindViewHolder(holder: SignalViewHolder, position: Int) {
-        val item: SignalCardUiModel = getItem(position)
-        holder.bind(item)
+        holder.bind(getItem(position))
     }
 
     class SignalViewHolder(
@@ -36,13 +35,11 @@ class SignalGridAdapter(
     ) : RecyclerView.ViewHolder(binding.root) {
 
         fun bind(item: SignalCardUiModel) {
-            binding.textCode.text = item.code
-            binding.textName.text = item.name
+            binding.textCodeName.text = buildCodeName(item)
             binding.textPrice.text = formatPrice(item.price)
             binding.textDelta.text = "前日比 ${formatSigned(item.changeRate)}%"
             binding.textSub1.text = "score ${item.score}"
-            binding.textSub2.text = item.reasonShort
-            binding.textUpdatedAt.text = item.updatedAt.takeLast(8)
+            binding.textSub2.text = buildSub2(item)
 
             val context = binding.root.context
             val type = item.signalType.uppercase()
@@ -80,41 +77,58 @@ class SignalGridAdapter(
             }
 
             binding.rootSignal.setBackgroundColor(bgColor)
-            binding.textCode.setTextColor(fgColor)
-            binding.textName.setTextColor(fgColor)
+            binding.textCodeName.setTextColor(fgColor)
             binding.textPrice.setTextColor(fgColor)
             binding.textDelta.setTextColor(fgColor)
             binding.textSub1.setTextColor(fgColor)
             binding.textSub2.setTextColor(fgColor)
-            binding.textUpdatedAt.setTextColor(fgColor)
 
             val isIndex =
                 item.code.equals("NIKKEI225", ignoreCase = true) ||
                     item.name.contains("日経")
 
             if (isIndex) {
-                binding.textCode.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
-                binding.textName.setTextSize(TypedValue.COMPLEX_UNIT_SP, 7f)
+                binding.textCodeName.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
                 binding.textPrice.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18f)
+                binding.textDelta.setTextSize(TypedValue.COMPLEX_UNIT_SP, 8f)
+                binding.textSub1.setTextSize(TypedValue.COMPLEX_UNIT_SP, 6f)
+                binding.textSub2.setTextSize(TypedValue.COMPLEX_UNIT_SP, 6f)
+            } else {
+                binding.textCodeName.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+                binding.textPrice.setTextSize(TypedValue.COMPLEX_UNIT_SP, 22f)
                 binding.textDelta.setTextSize(TypedValue.COMPLEX_UNIT_SP, 9f)
                 binding.textSub1.setTextSize(TypedValue.COMPLEX_UNIT_SP, 7f)
                 binding.textSub2.setTextSize(TypedValue.COMPLEX_UNIT_SP, 6f)
-                binding.textUpdatedAt.setTextSize(TypedValue.COMPLEX_UNIT_SP, 7f)
-            } else {
-                binding.textCode.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
-                binding.textName.setTextSize(TypedValue.COMPLEX_UNIT_SP, 8f)
-                binding.textPrice.setTextSize(TypedValue.COMPLEX_UNIT_SP, 23f)
-                binding.textDelta.setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
-                binding.textSub1.setTextSize(TypedValue.COMPLEX_UNIT_SP, 8f)
-                binding.textSub2.setTextSize(TypedValue.COMPLEX_UNIT_SP, 7f)
-                binding.textUpdatedAt.setTextSize(TypedValue.COMPLEX_UNIT_SP, 8f)
             }
 
-            binding.root.setOnClickListener { onItemClick(item) }
+            binding.root.setOnClickListener {
+                onItemClick(item)
+            }
+        }
+
+        private fun buildCodeName(item: SignalCardUiModel): String {
+            val code = item.code.trim()
+            val name = item.name.trim()
+            return when {
+                code.isEmpty() && name.isEmpty() -> "--"
+                name.isEmpty() -> code
+                code.isEmpty() -> name
+                else -> "$code $name"
+            }
+        }
+
+        private fun buildSub2(item: SignalCardUiModel): String {
+            val reason = item.reasonShort.trim()
+            val time = item.updatedAt.trim()
+            return if (time.isBlank()) reason else "$reason  $time"
         }
 
         private fun formatPrice(v: Double): String {
-            return if (abs(v - v.toLong().toDouble()) < 0.000001) v.toLong().toString() else "%.1f".format(v)
+            return if (abs(v - v.toLong().toDouble()) < 0.000001) {
+                v.toLong().toString()
+            } else {
+                "%.1f".format(v)
+            }
         }
 
         private fun formatSigned(v: Double): String {
@@ -128,8 +142,15 @@ class SignalGridAdapter(
 
     companion object {
         private val DiffCallback = object : DiffUtil.ItemCallback<SignalCardUiModel>() {
-            override fun areItemsTheSame(oldItem: SignalCardUiModel, newItem: SignalCardUiModel): Boolean = oldItem.slotId == newItem.slotId
-            override fun areContentsTheSame(oldItem: SignalCardUiModel, newItem: SignalCardUiModel): Boolean = oldItem == newItem
+            override fun areItemsTheSame(
+                oldItem: SignalCardUiModel,
+                newItem: SignalCardUiModel
+            ): Boolean = oldItem.slotId == newItem.slotId
+
+            override fun areContentsTheSame(
+                oldItem: SignalCardUiModel,
+                newItem: SignalCardUiModel
+            ): Boolean = oldItem == newItem
         }
     }
 }
