@@ -1,5 +1,6 @@
 //app/src/main/java/com/daytradchat/papa/ui/SettingsFragment.kt
-//ver 2.13-00
+//ver 2.13-09
+
 package com.daytradchat.papa.ui
 
 import android.os.Bundle
@@ -16,11 +17,17 @@ import com.daytradchat.papa.network.SocketConfig
 import kotlinx.coroutines.launch
 
 class SettingsFragment : Fragment() {
+
     private var _binding: FragmentSettingsBinding? = null
     private val binding get() = _binding!!
+
     private val viewModel: TradeViewModel by activityViewModels()
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View {
         _binding = FragmentSettingsBinding.inflate(inflater, container, false)
         return binding.root
     }
@@ -29,10 +36,9 @@ class SettingsFragment : Fragment() {
         binding.textPort.text = "Port: ${SocketConfig.SERVER_PORT}"
 
         binding.buttonSaveReconnect.setOnClickListener {
-            viewModel.saveSettingsAndReconnect(
-                binding.editHost.text?.toString().orEmpty(),
-                binding.editReconnectSec.text?.toString().orEmpty()
-            )
+            val host = binding.editHost.text?.toString().orEmpty().trim()
+            val reconnectSec = binding.editReconnectSec.text?.toString()?.trim()?.toIntOrNull() ?: 0
+            viewModel.saveSettingsAndReconnect(host, reconnectSec)
         }
 
         binding.buttonReset.setOnClickListener {
@@ -42,19 +48,22 @@ class SettingsFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch {
-                    viewModel.currentHost.collect {
-                        if (binding.editHost.text?.toString() != it) {
-                            binding.editHost.setText(it)
-                            binding.editHost.setSelection(it.length)
+                    viewModel.currentHost.collect { host ->
+                        val current = binding.editHost.text?.toString().orEmpty()
+                        if (current != host) {
+                            binding.editHost.setText(host)
+                            binding.editHost.setSelection(host.length)
                         }
                     }
                 }
+
                 launch {
-                    viewModel.reconnectSec.collect {
-                        val text = it.toString()
-                        if (binding.editReconnectSec.text?.toString() != text) {
-                            binding.editReconnectSec.setText(text)
-                            binding.editReconnectSec.setSelection(text.length)
+                    viewModel.reconnectSec.collect { sec ->
+                        val secText = sec.toString()
+                        val current = binding.editReconnectSec.text?.toString().orEmpty()
+                        if (current != secText) {
+                            binding.editReconnectSec.setText(secText)
+                            binding.editReconnectSec.setSelection(secText.length)
                         }
                     }
                 }

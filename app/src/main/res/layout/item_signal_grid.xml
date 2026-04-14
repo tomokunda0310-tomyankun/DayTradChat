@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- app/src/main/res/layout/item_signal_grid.xml -->
-<!-- ver 2.13-04 -->
+<!-- ver 2.13-10 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/rootSignal"
     android:layout_width="match_parent"
-    android:layout_height="176dp"
+    android:layout_height="188dp"
     android:layout_margin="4dp"
     android:background="@color/bg_surface"
     android:orientation="vertical"
@@ -18,7 +18,7 @@
         android:maxLines="1"
         android:text="7203"
         android:textColor="@color/text_primary"
-        android:textSize="15sp"
+        android:textSize="14sp"
         android:textStyle="bold" />
 
     <TextView
@@ -30,16 +30,16 @@
         android:maxLines="1"
         android:text="トヨタ自動車"
         android:textColor="@color/text_primary"
-        android:textSize="9sp" />
+        android:textSize="8sp" />
 
     <TextView
         android:id="@+id/textPrice"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
+        android:layout_marginTop="4dp"
         android:text="2875.0"
         android:textColor="@color/text_primary"
-        android:textSize="25sp"
+        android:textSize="23sp"
         android:textStyle="bold" />
 
     <TextView
@@ -49,7 +49,7 @@
         android:layout_marginTop="2dp"
         android:text="前日比 0.0%"
         android:textColor="@color/text_primary"
-        android:textSize="12sp"
+        android:textSize="10sp"
         android:textStyle="bold" />
 
     <TextView
@@ -61,7 +61,7 @@
         android:maxLines="1"
         android:text="score 0"
         android:textColor="@color/text_secondary"
-        android:textSize="10sp" />
+        android:textSize="8sp" />
 
     <TextView
         android:id="@+id/textSub2"
@@ -69,10 +69,10 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="1dp"
         android:ellipsize="end"
-        android:maxLines="2"
+        android:maxLines="3"
         android:text="VWAP下 / 売り板優勢 / 下落強い"
         android:textColor="@color/text_secondary"
-        android:textSize="9sp" />
+        android:textSize="7sp" />
 
     <TextView
         android:id="@+id/textUpdatedAt"
@@ -82,5 +82,5 @@
         android:gravity="end"
         android:text="12:30:52"
         android:textColor="@color/text_secondary"
-        android:textSize="9sp" />
+        android:textSize="8sp" />
 </LinearLayout>

@@ -1,5 +1,5 @@
 //app/src/main/java/com/daytradchat/papa/ui/SignalGridAdapter.kt
-//ver 2.13-05
+//ver 2.13-10
 
 package com.daytradchat.papa.ui
 
@@ -88,19 +88,28 @@ class SignalGridAdapter :
             binding.textDelta.setTextColor(fgColor)
             binding.textSub1.setTextColor(fgColor)
             binding.textSub2.setTextColor(fgColor)
+            binding.textUpdatedAt.setTextColor(fgColor)
 
             val isIndex =
                 item.code.equals("NIKKEI225", ignoreCase = true) ||
-                item.name.contains("日経")
+                    item.name.contains("日経")
 
             if (isIndex) {
-                binding.textCode.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
-                binding.textName.setTextSize(TypedValue.COMPLEX_UNIT_SP, 8f)
-                binding.textPrice.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20f)
+                binding.textCode.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+                binding.textName.setTextSize(TypedValue.COMPLEX_UNIT_SP, 7f)
+                binding.textPrice.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18f)
+                binding.textDelta.setTextSize(TypedValue.COMPLEX_UNIT_SP, 9f)
+                binding.textSub1.setTextSize(TypedValue.COMPLEX_UNIT_SP, 7f)
+                binding.textSub2.setTextSize(TypedValue.COMPLEX_UNIT_SP, 6f)
+                binding.textUpdatedAt.setTextSize(TypedValue.COMPLEX_UNIT_SP, 7f)
             } else {
-                binding.textCode.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
-                binding.textName.setTextSize(TypedValue.COMPLEX_UNIT_SP, 9f)
-                binding.textPrice.setTextSize(TypedValue.COMPLEX_UNIT_SP, 25f)
+                binding.textCode.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
+                binding.textName.setTextSize(TypedValue.COMPLEX_UNIT_SP, 8f)
+                binding.textPrice.setTextSize(TypedValue.COMPLEX_UNIT_SP, 23f)
+                binding.textDelta.setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
+                binding.textSub1.setTextSize(TypedValue.COMPLEX_UNIT_SP, 8f)
+                binding.textSub2.setTextSize(TypedValue.COMPLEX_UNIT_SP, 7f)
+                binding.textUpdatedAt.setTextSize(TypedValue.COMPLEX_UNIT_SP, 8f)
             }
         }
 

@@ -1,8 +1,10 @@
 //app/src/main/java/com/daytradchat/papa/MainActivity.kt
-//ver 2.13-00
+// ver 2.13-11
+
 package com.daytradchat.papa
 
 import android.os.Bundle
+import android.util.TypedValue
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Lifecycle
@@ -24,6 +26,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         binding.viewPager.adapter = MainPagerAdapter(this)
+
         TabLayoutMediator(binding.tabLayout, binding.viewPager) { tab, position ->
             tab.text = when (position) {
                 0 -> "シグナル"
@@ -32,6 +35,22 @@ class MainActivity : AppCompatActivity() {
                 else -> "システム"
             }
         }.attach()
+
+        // ★ここ追加（タブ文字サイズ小さく）
+        for (i in 0 until binding.tabLayout.tabCount) {
+            val tab = binding.tabLayout.getTabAt(i)
+            val tabView = (binding.tabLayout.getChildAt(0) as? android.view.ViewGroup)
+                ?.getChildAt(i) as? android.view.ViewGroup
+
+            tabView?.let { vg ->
+                for (j in 0 until vg.childCount) {
+                    val v = vg.getChildAt(j)
+                    if (v is android.widget.TextView) {
+                        v.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f) // ←ここで調整
+                    }
+                }
+            }
+        }
 
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
