@@ -1,7 +1,9 @@
 //app/src/main/java/com/daytradchat/papa/ui/SignalGridAdapter.kt
-//ver 2.13-00
+//ver 2.13-05
+
 package com.daytradchat.papa.ui
 
+import android.util.TypedValue
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.core.content.ContextCompat
@@ -11,71 +13,127 @@ import androidx.recyclerview.widget.RecyclerView
 import com.daytradchat.papa.R
 import com.daytradchat.papa.databinding.ItemSignalGridBinding
 import com.daytradchat.papa.model.SignalCardUiModel
+import kotlin.math.abs
 
-class SignalGridAdapter : ListAdapter<SignalCardUiModel, SignalGridAdapter.SignalViewHolder>(DiffCallback) {
+class SignalGridAdapter :
+    ListAdapter<SignalCardUiModel, SignalGridAdapter.SignalViewHolder>(DiffCallback) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): SignalViewHolder {
-        val binding = ItemSignalGridBinding.inflate(LayoutInflater.from(parent.context), parent, false)
+        val binding =
+            ItemSignalGridBinding.inflate(LayoutInflater.from(parent.context), parent, false)
         return SignalViewHolder(binding)
     }
 
     override fun onBindViewHolder(holder: SignalViewHolder, position: Int) {
-        holder.bind(getItem(position))
+        val item: SignalCardUiModel = getItem(position)
+        holder.bind(item)
     }
 
-    class SignalViewHolder(private val binding: ItemSignalGridBinding) : RecyclerView.ViewHolder(binding.root) {
+    class SignalViewHolder(
+        private val binding: ItemSignalGridBinding
+    ) : RecyclerView.ViewHolder(binding.root) {
+
         fun bind(item: SignalCardUiModel) {
-            binding.textCodeName.text = item.codeName
-            binding.textPrice.text = item.priceText
-            binding.textDelta.text = item.deltaText
-            binding.textSub1.text = item.sub1
-            binding.textSub2.text = item.sub2
-            binding.textUpdatedAt.text = item.updatedAt
+            binding.textCode.text = item.code
+            binding.textName.text = item.name
+            binding.textPrice.text = formatPrice(item.price)
+            binding.textDelta.text = "前日比 ${formatSigned(item.changeRate)}%"
+            binding.textSub1.text = "score ${item.score}"
+            binding.textSub2.text = item.reasonShort
+            binding.textUpdatedAt.text = item.updatedAt.takeLast(8)
 
             val context = binding.root.context
             val type = item.signalType.uppercase()
-            val (bg, fg) = when (type) {
+
+            val (bgColor, fgColor) = when (type) {
                 "BUY" -> Pair(
                     ContextCompat.getColor(context, R.color.buy_bg),
                     ContextCompat.getColor(context, R.color.buy_text)
                 )
+
                 "SELL" -> Pair(
                     ContextCompat.getColor(context, R.color.sell_bg),
                     ContextCompat.getColor(context, R.color.sell_text)
                 )
-                "INDEX" -> if (item.changeRate >= 0.0) {
-                    Pair(
-                        ContextCompat.getColor(context, R.color.buy_bg),
-                        ContextCompat.getColor(context, R.color.buy_text)
-                    )
-                } else {
-                    Pair(
-                        ContextCompat.getColor(context, R.color.sell_bg),
-                        ContextCompat.getColor(context, R.color.sell_text)
-                    )
+
+                "INDEX" -> {
+                    if (item.changeRate >= 0.0) {
+                        Pair(
+                            ContextCompat.getColor(context, R.color.buy_bg),
+                            ContextCompat.getColor(context, R.color.buy_text)
+                        )
+                    } else {
+                        Pair(
+                            ContextCompat.getColor(context, R.color.sell_bg),
+                            ContextCompat.getColor(context, R.color.sell_text)
+                        )
+                    }
                 }
-                else -> Pair(
+
+                "SKIP" -> Pair(
                     ContextCompat.getColor(context, R.color.skip_bg),
                     ContextCompat.getColor(context, R.color.skip_text)
                 )
+
+                else -> Pair(
+                    ContextCompat.getColor(context, R.color.bg_surface),
+                    ContextCompat.getColor(context, R.color.text_primary)
+                )
             }
 
-            binding.rootSignal.setBackgroundColor(bg)
-            binding.textCodeName.setTextColor(fg)
-            binding.textPrice.setTextColor(fg)
-            binding.textDelta.setTextColor(fg)
-            binding.textSub1.setTextColor(fg)
-            binding.textSub2.setTextColor(fg)
+            binding.rootSignal.setBackgroundColor(bgColor)
+            binding.textCode.setTextColor(fgColor)
+            binding.textName.setTextColor(fgColor)
+            binding.textPrice.setTextColor(fgColor)
+            binding.textDelta.setTextColor(fgColor)
+            binding.textSub1.setTextColor(fgColor)
+            binding.textSub2.setTextColor(fgColor)
+
+            val isIndex =
+                item.code.equals("NIKKEI225", ignoreCase = true) ||
+                item.name.contains("日経")
+
+            if (isIndex) {
+                binding.textCode.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+                binding.textName.setTextSize(TypedValue.COMPLEX_UNIT_SP, 8f)
+                binding.textPrice.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20f)
+            } else {
+                binding.textCode.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
+                binding.textName.setTextSize(TypedValue.COMPLEX_UNIT_SP, 9f)
+                binding.textPrice.setTextSize(TypedValue.COMPLEX_UNIT_SP, 25f)
+            }
+        }
+
+        private fun formatPrice(v: Double): String {
+            return if (abs(v - v.toLong().toDouble()) < 0.000001) {
+                v.toLong().toString()
+            } else {
+                "%.1f".format(v)
+            }
+        }
+
+        private fun formatSigned(v: Double): String {
+            return when {
+                v > 0.0 -> "+%.1f".format(v)
+                v < 0.0 -> "%.1f".format(v)
+                else -> "0.0"
+            }
         }
     }
 
     companion object {
         private val DiffCallback = object : DiffUtil.ItemCallback<SignalCardUiModel>() {
-            override fun areItemsTheSame(oldItem: SignalCardUiModel, newItem: SignalCardUiModel): Boolean {
+            override fun areItemsTheSame(
+                oldItem: SignalCardUiModel,
+                newItem: SignalCardUiModel
+            ): Boolean {
                 return oldItem.slotId == newItem.slotId
             }
 
-            override fun areContentsTheSame(oldItem: SignalCardUiModel, newItem: SignalCardUiModel): Boolean {
+            override fun areContentsTheSame(
+                oldItem: SignalCardUiModel,
+                newItem: SignalCardUiModel
+            ): Boolean {
                 return oldItem == newItem
             }
         }
