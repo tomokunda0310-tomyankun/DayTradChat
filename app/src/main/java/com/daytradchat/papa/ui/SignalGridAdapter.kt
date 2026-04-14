@@ -52,12 +52,10 @@ class SignalGridAdapter(
                     ContextCompat.getColor(context, R.color.buy_bg),
                     ContextCompat.getColor(context, R.color.buy_text)
                 )
-
                 "SELL" -> Pair(
                     ContextCompat.getColor(context, R.color.sell_bg),
                     ContextCompat.getColor(context, R.color.sell_text)
                 )
-
                 "INDEX" -> {
                     if (item.changeRate >= 0.0) {
                         Pair(
@@ -71,12 +69,10 @@ class SignalGridAdapter(
                         )
                     }
                 }
-
                 "SKIP" -> Pair(
                     ContextCompat.getColor(context, R.color.skip_bg),
                     ContextCompat.getColor(context, R.color.skip_text)
                 )
-
                 else -> Pair(
                     ContextCompat.getColor(context, R.color.bg_surface),
                     ContextCompat.getColor(context, R.color.text_primary)
@@ -114,17 +110,11 @@ class SignalGridAdapter(
                 binding.textUpdatedAt.setTextSize(TypedValue.COMPLEX_UNIT_SP, 8f)
             }
 
-            binding.root.setOnClickListener {
-                onItemClick(item)
-            }
+            binding.root.setOnClickListener { onItemClick(item) }
         }
 
         private fun formatPrice(v: Double): String {
-            return if (abs(v - v.toLong().toDouble()) < 0.000001) {
-                v.toLong().toString()
-            } else {
-                "%.1f".format(v)
-            }
+            return if (abs(v - v.toLong().toDouble()) < 0.000001) v.toLong().toString() else "%.1f".format(v)
         }
 
         private fun formatSigned(v: Double): String {
@@ -138,19 +128,8 @@ class SignalGridAdapter(
 
     companion object {
         private val DiffCallback = object : DiffUtil.ItemCallback<SignalCardUiModel>() {
-            override fun areItemsTheSame(
-                oldItem: SignalCardUiModel,
-                newItem: SignalCardUiModel
-            ): Boolean {
-                return oldItem.slotId == newItem.slotId
-            }
-
-            override fun areContentsTheSame(
-                oldItem: SignalCardUiModel,
-                newItem: SignalCardUiModel
-            ): Boolean {
-                return oldItem == newItem
-            }
+            override fun areItemsTheSame(oldItem: SignalCardUiModel, newItem: SignalCardUiModel): Boolean = oldItem.slotId == newItem.slotId
+            override fun areContentsTheSame(oldItem: SignalCardUiModel, newItem: SignalCardUiModel): Boolean = oldItem == newItem
         }
     }
 }

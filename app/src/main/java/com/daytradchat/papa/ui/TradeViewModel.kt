@@ -95,9 +95,7 @@ class TradeViewModel : ViewModel() {
 
     fun buildHistoryDialogText(code: String): String {
         val rows = historyMap[code].orEmpty()
-        if (rows.isEmpty()) {
-            return "履歴なし"
-        }
+        if (rows.isEmpty()) return "履歴なし"
 
         val sparkline = buildSparkline(rows.map { it.price })
         val lines = mutableListOf<String>()
@@ -118,24 +116,14 @@ class TradeViewModel : ViewModel() {
 
     private fun appendLog(text: String) {
         val next = mutableListOf<LogLineUiModel>()
-        next.add(
-            LogLineUiModel(
-                id = UUID.randomUUID().toString(),
-                text = "${shortTimeFormat.format(Date())} $text"
-            )
-        )
+        next.add(LogLineUiModel(UUID.randomUUID().toString(), "${shortTimeFormat.format(Date())} $text"))
         next.addAll(_logItems.value)
         _logItems.value = next.take(100)
     }
 
     private fun appendSystemLog(text: String) {
         val next = mutableListOf<LogLineUiModel>()
-        next.add(
-            LogLineUiModel(
-                id = UUID.randomUUID().toString(),
-                text = "${timeFormat.format(Date())} $text"
-            )
-        )
+        next.add(LogLineUiModel(UUID.randomUUID().toString(), "${timeFormat.format(Date())} $text"))
         next.addAll(_systemLogItems.value)
         _systemLogItems.value = next.take(200)
     }
@@ -143,18 +131,8 @@ class TradeViewModel : ViewModel() {
     private fun recordHistory(items: List<SignalCardUiModel>) {
         items.forEach { item ->
             val list = historyMap.getOrPut(item.code) { mutableListOf() }
-            list.add(
-                SignalHistoryUiModel(
-                    time = item.updatedAt.takeLast(8),
-                    price = item.price,
-                    changeRate = item.changeRate,
-                    score = item.score,
-                    reasonShort = item.reasonShort
-                )
-            )
-            while (list.size > 30) {
-                list.removeAt(0)
-            }
+            list.add(SignalHistoryUiModel(item.updatedAt.takeLast(8), item.price, item.changeRate, item.score, item.reasonShort))
+            while (list.size > 30) list.removeAt(0)
         }
     }
 
@@ -175,18 +153,7 @@ class TradeViewModel : ViewModel() {
 
     private fun emptySignalItems(): List<SignalCardUiModel> {
         return (0 until 9).map { index ->
-            SignalCardUiModel(
-                slotId = index.toString(),
-                code = "--",
-                name = "待機中",
-                signalType = "SKIP",
-                score = 0,
-                price = 0.0,
-                changeRate = 0.0,
-                reasonShort = "データ待ち",
-                updatedAt = "",
-                isEmpty = true
-            )
+            SignalCardUiModel(index.toString(), "--", "待機中", "SKIP", 0, 0.0, 0.0, "データ待ち", "", true)
         }
     }
 
