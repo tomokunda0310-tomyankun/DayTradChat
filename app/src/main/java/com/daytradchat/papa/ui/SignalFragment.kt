@@ -1,5 +1,5 @@
 //app/src/main/java/com/daytradchat/papa/ui/SignalFragment.kt
-//ver 2.15-20
+//ver 2.16-00
 package com.daytradchat.papa.ui
 
 import android.app.AlertDialog
@@ -21,14 +21,20 @@ import com.daytradchat.papa.model.SignalCardUiModel
 import kotlinx.coroutines.launch
 
 class SignalFragment : Fragment() {
-
     private var _binding: FragmentSignalBinding? = null
     private val binding get() = _binding!!
-
     private val viewModel: TradeViewModel by activityViewModels()
-    private val adapter = SignalGridAdapter { item -> showHistoryDialog(item) }
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
+    private val adapter = SignalGridAdapter(
+        onItemClick = { item -> showHistoryDialog(item) },
+        profitProvider = { code, price -> viewModel.getProfitDisplay(code, price) }
+    )
+
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View {
         _binding = FragmentSignalBinding.inflate(inflater, container, false)
         return binding.root
     }
@@ -39,7 +45,9 @@ class SignalFragment : Fragment() {
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.signalItems.collect { adapter.submitList(it) }
+                viewModel.signalItems.collect { list ->
+                    adapter.submitList(list)
+                }
             }
         }
     }
@@ -52,6 +60,7 @@ class SignalFragment : Fragment() {
             typeface = Typeface.MONOSPACE
             movementMethod = ScrollingMovementMethod()
         }
+
         AlertDialog.Builder(requireContext())
             .setTitle("${item.code} ${item.name}")
             .setView(textView)

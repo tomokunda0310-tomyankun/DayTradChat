@@ -1,17 +1,16 @@
 //app/src/main/java/com/daytradchat/papa/ui/TradeViewModel.kt
-//ver 2.15-20
+//ver 2.16-01
 package com.daytradchat.papa.ui
 
 import android.app.Application
+import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import com.daytradchat.papa.model.LogLineUiModel
 import com.daytradchat.papa.model.MarketItem
 import com.daytradchat.papa.model.ServerMessage
 import com.daytradchat.papa.model.SignalCardUiModel
-import com.daytradchat.papa.model.SignalHistoryUiModel
 import com.daytradchat.papa.model.SignalItem
 import com.daytradchat.papa.network.ConfigStore
-import com.daytradchat.papa.network.HoldingPref
 import com.daytradchat.papa.network.ServerMessageParser
 import com.daytradchat.papa.network.SocketClient
 import com.daytradchat.papa.network.SocketConfig
@@ -25,16 +24,20 @@ import java.util.Locale
 import java.util.UUID
 import kotlin.math.roundToLong
 
+private data class HoldingInfo(val shares: Int, val buyPrice: Double)
+
 class TradeViewModel(application: Application) : AndroidViewModel(application) {
     private val parser = ServerMessageParser()
     private val configStore = ConfigStore(application)
     private val systemLogStore = SystemLogStore(application)
-    private val historyMap = linkedMapOf<String, MutableList<SignalHistoryUiModel>>()
-    private val watchedCodes = mutableListOf<String>()
-    private val signalMap = linkedMapOf<String, SignalCardUiModel>()
-    private var marketCard: SignalCardUiModel? = null
-    private var holdings: Map<String, HoldingPref> = configStore.loadHoldings()
+    private val prefs = application.getSharedPreferences("daytrade_client_state", Context.MODE_PRIVATE)
     private val displayDateFormat = SimpleDateFormat("yyyy/MM/dd HH:mm:ss", Locale.JAPAN)
+    private val dayKeyFormat = SimpleDateFormat("yyyyMMdd", Locale.JAPAN)
+
+    private val signalMap = linkedMapOf<String, SignalItem>()
+    private val historyMap = linkedMapOf<String, MutableList<String>>()
+    private var marketItem: MarketItem? = null
+    private val holdings = linkedMapOf<String, HoldingInfo>()
 
     private val _statusLeft = MutableStateFlow("未接続")
     val statusLeft: StateFlow<String> = _statusLeft.asStateFlow()
@@ -63,6 +66,9 @@ class TradeViewModel(application: Application) : AndroidViewModel(application) {
     private val _availableCodes = MutableStateFlow<List<String>>(emptyList())
     val availableCodes: StateFlow<List<String>> = _availableCodes.asStateFlow()
 
+    private val _selectedDisplayCodes = MutableStateFlow(loadDisplayCodes())
+    val selectedDisplayLabels: StateFlow<List<String>> = _selectedDisplayCodes.asStateFlow()
+
     private val socketClient = SocketClient(
         hostProvider = { _currentHost.value },
         reconnectDelayMsProvider = { _reconnectSec.value.toLong() * 1000L },
@@ -81,15 +87,16 @@ class TradeViewModel(application: Application) : AndroidViewModel(application) {
                 _statusRight.value = displayDateFormat.format(Date())
             }
         },
-        onSystemLog = { appendSystemLog(it) }
+        onSystemLog = { log -> appendSystemLog(log) }
     )
 
     init {
+        rotateDayIfNeeded()
+        loadHoldings()
         _hostLine.value = hostLineText()
         _systemLogItems.value = systemLogStore.loadToday().reversed().map {
             LogLineUiModel(UUID.randomUUID().toString(), it)
         }
-        publishAvailableCodes()
     }
 
     fun startSocket() = socketClient.start()
@@ -102,194 +109,174 @@ class TradeViewModel(application: Application) : AndroidViewModel(application) {
         _currentHost.value = configStore.loadHost()
         _reconnectSec.value = configStore.loadReconnectSec()
         _hostLine.value = hostLineText()
-        appendSystemLog("CONFIG_SAVE: host=${_currentHost.value}, reconnectSec=${_reconnectSec.value}")
         socketClient.restart()
     }
 
     fun resetSettingsAndReconnect() {
         configStore.resetAll()
-        holdings = emptyMap()
         _currentHost.value = configStore.loadHost()
         _reconnectSec.value = configStore.loadReconnectSec()
         _hostLine.value = hostLineText()
-        appendSystemLog("CONFIG_RESET")
-        renderCards()
         socketClient.restart()
     }
 
-    fun applyHolding(code: String, quantity: Int, buyPriceText: String) {
-        val buyPrice = buyPriceText.toDoubleOrNull() ?: return
-        if (code.isBlank() || quantity <= 0) return
-        configStore.saveHolding(code, quantity, buyPrice)
-        holdings = configStore.loadHoldings()
-        appendUserLog("HOLD $code qty=$quantity buy=$buyPrice")
-        renderCards()
+    fun sendWatchCommand(targetLabel: String, inputText: String) {
+        val targetCode = extractCode(targetLabel)
+        val payload = when {
+            inputText.isBlank() -> return
+            inputText.startsWith("{") -> inputText
+            inputText.contains(",") -> inputText
+            inputText.contains("#") -> inputText
+            targetCode.isNotBlank() -> "$targetCode#$inputText"
+            else -> inputText
+        }
+        socketClient.sendRawLine(payload)
     }
 
-    fun sendWatchCommand(targetCode: String, inputText: String) {
-        val raw = inputText.trim()
-        if (raw.isBlank()) return
-        val sendText = when {
-            raw.startsWith("{") -> raw
-            raw.contains(",") || raw.contains("#") -> raw
-            targetCode.isNotBlank() -> "$targetCode#$raw"
-            else -> raw
+    fun applyHolding(codeLabel: String, shares: Int, buyPriceText: String) {
+        val code = extractCode(codeLabel)
+        val buyPrice = buyPriceText.toDoubleOrNull() ?: return
+        if (code.isBlank() || shares <= 0) return
+        holdings[code] = HoldingInfo(shares, buyPrice)
+        saveHoldings()
+        rebuildSignalItems()
+    }
+
+    fun addDisplayCode(label: String) {
+        val code = extractCode(label)
+        if (code.isBlank()) return
+        val current = _selectedDisplayCodes.value.toMutableList()
+        if (current.contains(code)) return
+        if (current.size >= 8) return
+        current.add(code)
+        _selectedDisplayCodes.value = current
+        saveDisplayCodes(current)
+        rebuildSignalItems()
+    }
+
+    fun removeDisplayCodeAt(position: Int) {
+        val current = _selectedDisplayCodes.value.toMutableList()
+        if (position !in current.indices) return
+        current.removeAt(position)
+        _selectedDisplayCodes.value = current
+        saveDisplayCodes(current)
+        rebuildSignalItems()
+    }
+
+    fun resetDisplayCodesToday() {
+        _selectedDisplayCodes.value = autoSelectedCodes()
+        saveDisplayCodes(_selectedDisplayCodes.value)
+        rebuildSignalItems()
+    }
+
+    fun getProfitDisplay(code: String, currentPrice: Double): ProfitDisplay {
+        val holding = holdings[code] ?: return ProfitDisplay("")
+        val profit = ((currentPrice - holding.buyPrice) * holding.shares).roundToLong().toInt()
+        return when {
+            profit > 0 -> ProfitDisplay("損益 +$profit  ${holding.shares}株", true)
+            profit < 0 -> ProfitDisplay("損益 $profit  ${holding.shares}株", false)
+            else -> ProfitDisplay("損益 0  ${holding.shares}株", null)
         }
-        socketClient.sendRawLine(sendText)
     }
 
     fun buildHistoryDialogText(code: String): String {
         val rows = historyMap[code].orEmpty()
-        if (rows.isEmpty()) return "履歴なし"
-        val lines = mutableListOf<String>()
-        lines += "価格推移"
-        lines += buildSparkline(rows.map { it.price })
-        lines += ""
-        lines += "時刻        価格      前日比   score  内容"
-        rows.asReversed().take(10).forEach { row ->
-            lines += "${row.time.padEnd(8)}  ${formatCompact(row.price).padStart(8)}  ${(formatSigned(row.changeRate) + "%").padStart(7)}  ${row.score.toString().padStart(5)}  ${row.reasonShort}"
-        }
-        return lines.joinToString("\n")
+        return if (rows.isEmpty()) "履歴なし" else rows.joinToString("\n")
     }
 
     private fun handleIncomingLine(line: String) {
         val message = parser.parse(line)
-        if (message == null) {
-            appendUserLog(line)
-            return
-        }
         when (message) {
             is ServerMessage.ServerHello -> {
                 _statusLeft.value = "接続済"
-                _statusRight.value = formatServerTime(message.server_time)
+                _statusRight.value = (message.server_time ?: "").replace("-", "/")
                 appendUserLog("HELLO ${message.server_time.orEmpty()}")
             }
             is ServerMessage.Pong -> appendUserLog("PONG ${message.server_time.orEmpty()}")
-            is ServerMessage.AckMessage -> {
-                val typeLabel = message.original_type?.takeIf { it.isNotBlank() } ?: (message.type ?: "ack")
-                appendUserLog("ACK $typeLabel: ${message.message.orEmpty()}")
-            }
-            is ServerMessage.ErrorMessage -> {
-                val compact = buildString {
-                    append("ERROR ")
-                    append(message.message.orEmpty())
-                    if (!message.detail.isNullOrBlank()) {
-                        append(" / ")
-                        append(message.detail)
-                    }
-                }
-                appendUserLog(compact)
-            }
-            is ServerMessage.MasterMessage -> {
-                watchedCodes.clear()
-                message.symbols.orEmpty().forEach { item ->
-                    val code = item.code.orEmpty().trim()
-                    if (code.isNotBlank()) watchedCodes += code
-                    val ui = itemToUi("slot_x", item)
-                    signalMap[ui.code] = ui
-                }
-                appendUserLog("MASTER count=${message.count ?: message.symbols.orEmpty().size}")
-                renderCards()
-            }
-            is ServerMessage.WatchUpdateAckMessage -> {
-                watchedCodes.clear()
-                watchedCodes += message.symbols.orEmpty().filter { it.isNotBlank() }
-                appendUserLog("WATCH ${message.mode.orEmpty()} ${message.request.orEmpty()}")
-                renderCards()
-            }
+            is ServerMessage.AckMessage -> appendUserLog("ACK ${(message.original_type ?: "register").ifBlank { "register" }}")
+            is ServerMessage.ErrorMessage -> appendUserLog("ERROR ${message.message.orEmpty()}")
             is ServerMessage.SignalBatch -> {
-                val batchSymbols = when {
-                    !message.symbols.isNullOrEmpty() -> message.symbols.orEmpty()
-                    !message.items.isNullOrEmpty() -> message.items.orEmpty()
+                marketItem = message.market
+                val symbols = when {
+                    !message.symbols.isNullOrEmpty() -> message.symbols
+                    !message.items.isNullOrEmpty() -> message.items
                     else -> emptyList()
                 }
-                if (message.market != null) marketCard = marketToUi("slot_0", message.market)
-                if (watchedCodes.isEmpty()) {
-                    watchedCodes.clear()
-                    watchedCodes += batchSymbols.mapNotNull { it.code?.trim() }.filter { it.isNotBlank() }.take(8)
+                symbols.forEach { item ->
+                    val code = extractItemCode(item)
+                    if (code.isNotBlank()) signalMap[code] = item
                 }
-                batchSymbols.forEach { item ->
-                    val ui = itemToUi("slot_x", item)
-                    signalMap[ui.code] = ui
+                if (_selectedDisplayCodes.value.isEmpty()) {
+                    _selectedDisplayCodes.value = autoSelectedCodes()
+                    saveDisplayCodes(_selectedDisplayCodes.value)
                 }
-                appendUserLog("BATCH ${message.sent_at.orEmpty()} count=${batchSymbols.size}")
-                renderCards()
+                updateAvailableCodes()
+                rebuildSignalItems()
             }
-            is ServerMessage.SignalSymbolMessage -> {
-                val symbol = message.symbol
-                if (symbol != null) {
-                    val ui = itemToUi("slot_x", symbol)
-                    signalMap[ui.code] = ui
-                    if (ui.code.isNotBlank() && watchedCodes.none { it == ui.code }) {
-                        watchedCodes += ui.code
-                        while (watchedCodes.size > 8) watchedCodes.removeAt(watchedCodes.lastIndex)
-                    }
-                    appendUserLog("SYMBOL ${ui.code} ${ui.name}")
-                    renderCards()
-                }
-            }
+            else -> appendUserLog(line)
         }
     }
 
-    private fun renderCards() {
+    private fun rebuildSignalItems() {
+        rotateDayIfNeeded()
         val list = mutableListOf<SignalCardUiModel>()
-        list += marketCard ?: emptyIndex("slot_0")
-        val codes = if (watchedCodes.isNotEmpty()) watchedCodes.take(8) else signalMap.keys.take(8).toList()
-        codes.forEachIndexed { idx, code ->
-            val current = signalMap[code]
-            list += if (current != null) applyHolding(current.copy(slotId = "slot_${idx + 1}")) else emptyStock("slot_${idx + 1}", code)
+        list += buildIndexCard()
+        _selectedDisplayCodes.value.take(8).forEachIndexed { index, code ->
+            list += buildSignalCard("slot_${index + 1}", code)
         }
-        while (list.size < 9) list += emptyStock("slot_${list.size}", "--")
+        while (list.size < 9) list += emptyStock("slot_${list.size}")
         _signalItems.value = list.take(9)
-        recordHistory(_signalItems.value)
-        publishAvailableCodes()
     }
 
-    private fun publishAvailableCodes() {
-        _availableCodes.value = _signalItems.value.filter { !it.isEmpty && it.code != "NIKKEI225" && it.code != "--" }.map { it.code }
-    }
-
-    private fun applyHolding(item: SignalCardUiModel): SignalCardUiModel {
-        val h = holdings[item.code] ?: return item.copy(profitText = "")
-        val profit = if (item.signalType == "SELL") {
-            (h.buyPrice - item.price) * h.quantity
+    private fun buildIndexCard(): SignalCardUiModel {
+        val m = marketItem
+        return if (m == null) {
+            SignalCardUiModel(
+                slotId = "slot_0",
+                code = "NIKKEI225",
+                name = "日経平均",
+                signalType = "INDEX",
+                score = 0,
+                price = 0.0,
+                changeRate = 0.0,
+                reasonShort = "待機中",
+                updatedAt = "",
+                isEmpty = false
+            )
         } else {
-            (item.price - h.buyPrice) * h.quantity
+            SignalCardUiModel(
+                slotId = "slot_0",
+                code = m.code ?: "NIKKEI225",
+                name = m.name ?: "日経平均",
+                signalType = "INDEX",
+                score = 0,
+                price = m.price ?: 0.0,
+                changeRate = m.change_rate ?: 0.0,
+                reasonShort = "日経平均",
+                updatedAt = shortTime(m.captured_at ?: ""),
+                isEmpty = false
+            )
         }
-        val text = "損益 ${formatSignedValue(profit)}  ${h.quantity}株 @${formatCompact(h.buyPrice)}"
-        return item.copy(profitText = text)
     }
 
-    private fun marketToUi(slotId: String, market: MarketItem): SignalCardUiModel {
-        return SignalCardUiModel(
-            slotId = slotId,
-            code = market.code.orEmpty().ifBlank { "NIKKEI225" },
-            name = market.name.orEmpty().ifBlank { "日経平均" },
-            signalType = "INDEX",
-            score = 0,
-            price = market.price ?: 0.0,
-            changeRate = market.change_rate ?: 0.0,
-            reasonShort = "日経平均",
-            updatedAt = shortTime(market.captured_at.orEmpty()),
-            isEmpty = false
-        )
-    }
-
-    private fun itemToUi(slotId: String, item: SignalItem): SignalCardUiModel {
-        val d = item.data
-        val code = firstNotBlank(d?.code, item.code) ?: "--"
-        val name = firstNotBlank(d?.name, item.name, extractNameFromTitle(item.title, code, item.side, item.signal_type)) ?: "名称未取得"
-        val side = firstNotBlank(d?.signal_type, item.signal_type, item.side)?.uppercase(Locale.ROOT).orEmpty()
+    private fun buildSignalCard(slotId: String, code: String): SignalCardUiModel {
+        val item = signalMap[code] ?: return emptyStock(slotId, code)
+        val side = (item.side ?: item.signal_type ?: "SKIP").uppercase(Locale.ROOT)
         val signalType = when (side) {
             "LONG", "BUY" -> "BUY"
             "SHORT", "SELL" -> "SELL"
             else -> "SKIP"
         }
-        val score = d?.signal_score ?: item.signal_score ?: item.score ?: 0
-        val price = d?.price ?: item.price ?: 0.0
-        val changeRate = d?.change_rate ?: item.change_rate ?: 0.0
-        val reason = firstNotBlank(d?.reason_short, item.reason_short, deriveReason(item.side, item.body)) ?: "候補"
-        val updated = shortTime(firstNotBlank(d?.captured_at, item.captured_at, item.sent_at, item.price_time) ?: "")
+        val price = item.price ?: item.data?.price ?: 0.0
+        val name = item.name ?: item.data?.name ?: "名称未取得"
+        val score = item.score ?: item.signal_score ?: item.data?.signal_score ?: 0
+        val reason = when (signalType) {
+            "BUY" -> "ロング候補"
+            "SELL" -> "ショート候補"
+            else -> item.reason_short ?: item.data?.reason_short ?: "候補"
+        }
+        val updatedAt = shortTime(item.sent_at ?: item.captured_at ?: item.data?.captured_at ?: "")
+        rememberHistory(code, price, updatedAt, reason, score)
         return SignalCardUiModel(
             slotId = slotId,
             code = code,
@@ -297,53 +284,86 @@ class TradeViewModel(application: Application) : AndroidViewModel(application) {
             signalType = signalType,
             score = score,
             price = price,
-            changeRate = changeRate,
+            changeRate = item.change_rate ?: item.data?.change_rate ?: 0.0,
             reasonShort = reason,
-            updatedAt = updated,
+            updatedAt = updatedAt,
             isEmpty = false
         )
     }
 
-    private fun deriveReason(side: String?, body: String?): String {
-        return when (side?.uppercase(Locale.ROOT).orEmpty()) {
-            "LONG" -> "ロング候補"
-            "SHORT" -> "ショート候補"
-            else -> body.orEmpty().ifBlank { "候補" }
+    private fun updateAvailableCodes() {
+        _availableCodes.value = signalMap.values.mapNotNull { item ->
+            val code = extractItemCode(item)
+            if (code.isBlank()) null else "$code ${shortName(item.name ?: item.data?.name ?: "")}"
         }
     }
 
-    private fun extractNameFromTitle(title: String?, code: String, side: String?, signalType: String?): String? {
-        val raw = title.orEmpty().trim()
-        if (raw.isBlank()) return null
-        return raw
-            .replace(code, "")
-            .replace(side.orEmpty(), "", ignoreCase = true)
-            .replace(signalType.orEmpty(), "", ignoreCase = true)
-            .trim()
-            .ifBlank { null }
+    private fun autoSelectedCodes(): List<String> = signalMap.keys.take(8).toList()
+
+    private fun shortName(name: String): String = if (name.length <= 10) name else name.take(10) + "…"
+
+    private fun extractItemCode(item: SignalItem): String = item.code ?: item.data?.code ?: ""
+
+    private fun extractCode(label: String): String = label.substringBefore(" ").trim()
+
+    private fun rememberHistory(code: String, price: Double, updatedAt: String, reason: String, score: Int) {
+        val list = historyMap.getOrPut(code) { mutableListOf() }
+        list.add("${updatedAt.padEnd(8)}  ${formatCompact(price).padStart(8)}  score ${score}  $reason")
+        while (list.size > 30) list.removeAt(0)
     }
 
-    private fun firstNotBlank(vararg values: String?): String? {
-        for (v in values) {
-            val t = v?.trim().orEmpty()
-            if (t.isNotBlank()) return t
-        }
-        return null
+    private fun loadDisplayCodes(): List<String> {
+        rotateDayIfNeeded()
+        return prefs.getString("display_codes", "")
+            ?.split(",")
+            ?.map { it.trim() }
+            ?.filter { it.isNotBlank() }
+            ?: emptyList()
     }
 
-    private fun recordHistory(items: List<SignalCardUiModel>) {
-        items.filter { !it.isEmpty && it.code != "--" }.forEach { item ->
-            val list = historyMap.getOrPut(item.code) { mutableListOf() }
-            list += SignalHistoryUiModel(
-                time = item.updatedAt.ifBlank { shortTime(displayDateFormat.format(Date())) },
-                price = item.price,
-                changeRate = item.changeRate,
-                score = item.score,
-                reasonShort = item.reasonShort
-            )
-            while (list.size > 30) list.removeAt(0)
+    private fun saveDisplayCodes(codes: List<String>) {
+        prefs.edit().putString("display_codes", codes.joinToString(",")).apply()
+        prefs.edit().putString("display_codes_day", dayKeyFormat.format(Date())).apply()
+    }
+
+    private fun rotateDayIfNeeded() {
+        val today = dayKeyFormat.format(Date())
+        val saved = prefs.getString("display_codes_day", "") ?: ""
+        if (saved != today) {
+            prefs.edit().remove("display_codes").putString("display_codes_day", today).apply()
         }
     }
+
+    private fun loadHoldings() {
+        prefs.all.forEach { (k, v) ->
+            if (k.startsWith("holding_")) {
+                val code = k.removePrefix("holding_")
+                val raw = v?.toString().orEmpty()
+                val parts = raw.split("|")
+                if (parts.size == 2) {
+                    val shares = parts[0].toIntOrNull() ?: 0
+                    val buyPrice = parts[1].toDoubleOrNull() ?: 0.0
+                    if (shares > 0 && buyPrice > 0.0) holdings[code] = HoldingInfo(shares, buyPrice)
+                }
+            }
+        }
+    }
+
+    private fun saveHoldings() {
+        val editor = prefs.edit()
+        prefs.all.keys.filter { it.startsWith("holding_") }.forEach { editor.remove(it) }
+        holdings.forEach { (code, info) ->
+            editor.putString("holding_$code", "${info.shares}|${info.buyPrice}")
+        }
+        editor.apply()
+    }
+
+    private fun hostLineText(): String {
+        val host = _currentHost.value.trim().ifBlank { "未設定" }
+        return "host: $host  port: ${SocketConfig.SERVER_PORT}  reconnect: ${_reconnectSec.value}s"
+    }
+
+    private fun shortTime(value: String): String = if (value.length >= 8) value.takeLast(8) else value
 
     private fun appendUserLog(text: String) {
         _logItems.value = (listOf(LogLineUiModel(UUID.randomUUID().toString(), text)) + _logItems.value).take(80)
@@ -356,86 +376,28 @@ class TradeViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun createEmptySlots(): List<SignalCardUiModel> {
         val list = mutableListOf<SignalCardUiModel>()
-        list += emptyIndex("slot_0")
-        for (i in 1 until 9) list += emptyStock("slot_$i", "--")
+        list += buildIndexCard()
+        for (i in 1 until 9) list += emptyStock("slot_$i")
         return list
     }
 
-    private fun emptyIndex(slotId: String) = SignalCardUiModel(
-        slotId = slotId,
-        code = "NIKKEI225",
-        name = "日経平均",
-        signalType = "INDEX",
-        score = 0,
-        price = 0.0,
-        changeRate = 0.0,
-        reasonShort = "待機中",
-        updatedAt = "",
-        isEmpty = true
-    )
-
-    private fun emptyStock(slotId: String, codeHint: String) = SignalCardUiModel(
-        slotId = slotId,
-        code = codeHint,
-        name = if (codeHint == "--") "待機中" else "受信待ち",
-        signalType = "SKIP",
-        score = 0,
-        price = 0.0,
-        changeRate = 0.0,
-        reasonShort = "データ待機",
-        updatedAt = "",
-        isEmpty = codeHint == "--"
-    )
-
-    private fun hostLineText(): String {
-        val host = _currentHost.value.trim()
-        return if (host.isBlank()) {
-            "host: 未設定  port: ${SocketConfig.SERVER_PORT}  reconnect: ${_reconnectSec.value}s"
-        } else {
-            "host: $host  port: ${SocketConfig.SERVER_PORT}  reconnect: ${_reconnectSec.value}s"
-        }
-    }
-
-    private fun formatServerTime(value: String?): String = value.orEmpty().replace("-", "/")
-
-    private fun shortTime(value: String): String {
-        return when {
-            value.length >= 8 -> value.takeLast(8)
-            else -> value
-        }
-    }
-
-    private fun buildSparkline(values: List<Double>): String {
-        if (values.isEmpty()) return "-"
-        val chars = listOf("▁", "▂", "▃", "▄", "▅", "▆", "▇", "█")
-        val min = values.minOrNull() ?: 0.0
-        val max = values.maxOrNull() ?: 0.0
-        if (min == max) return List(values.size) { "▄" }.joinToString("")
-        return values.joinToString("") { value ->
-            val ratio = (value - min) / (max - min)
-            val index = (ratio * (chars.size - 1)).roundToLong().toInt().coerceIn(0, chars.size - 1)
-            chars[index]
-        }
+    private fun emptyStock(slotId: String, code: String = "--"): SignalCardUiModel {
+        return SignalCardUiModel(
+            slotId = slotId,
+            code = code,
+            name = "待機中",
+            signalType = "SKIP",
+            score = 0,
+            price = 0.0,
+            changeRate = 0.0,
+            reasonShort = "待機中",
+            updatedAt = "",
+            isEmpty = false
+        )
     }
 
     private fun formatCompact(v: Double): String {
         return if (v == v.toLong().toDouble()) v.toLong().toString() else "%.1f".format(v)
-    }
-
-    private fun formatSigned(v: Double): String {
-        return when {
-            v > 0.0 -> "+%.1f".format(v)
-            v < 0.0 -> "%.1f".format(v)
-            else -> "0.0"
-        }
-    }
-
-    private fun formatSignedValue(v: Double): String {
-        return when {
-            v > 0.0 -> "+${formatCompact(v)}"
-            v < 0.0 -> formatCompact(v)
-            else -> "0"
-        }
     }
 
     override fun onCleared() {

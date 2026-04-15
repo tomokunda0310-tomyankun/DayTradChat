@@ -1,6 +1,5 @@
 //app/src/main/java/com/daytradchat/papa/ui/SettingsFragment.kt
-//ver 2.15-22
-
+//ver 2.16-00
 package com.daytradchat.papa.ui
 
 import android.os.Bundle
@@ -18,36 +17,26 @@ import com.daytradchat.papa.network.SocketConfig
 import kotlinx.coroutines.launch
 
 class SettingsFragment : Fragment() {
-
     private var _binding: FragmentSettingsBinding? = null
     private val binding get() = _binding!!
-
     private val viewModel: TradeViewModel by activityViewModels()
     private lateinit var codeAdapter: ArrayAdapter<String>
     private lateinit var shareAdapter: ArrayAdapter<String>
 
-    override fun onCreateView(
-        inflater: LayoutInflater,
-        container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View {
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentSettingsBinding.inflate(inflater, container, false)
         return binding.root
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        binding.textVersion.text = "ver 2.15-22"
+        binding.textVersion.text = "ver 2.16-00"
         binding.textPort.text = "Port: ${SocketConfig.SERVER_PORT}"
         binding.textSendSpec.text = """送信仕様
 JSON: {"type":"watch_codes","codes":["5726","186A"]}
 文字列全入替: 5726,186A,6323
 文字列1銘柄交換: 5726#7011"""
 
-        codeAdapter = ArrayAdapter(
-            requireContext(),
-            android.R.layout.simple_spinner_item,
-            mutableListOf<String>()
-        )
+        codeAdapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, mutableListOf<String>())
         codeAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         binding.spinnerTargetCode.adapter = codeAdapter
         binding.spinnerHoldingCode.adapter = codeAdapter
@@ -61,26 +50,24 @@ JSON: {"type":"watch_codes","codes":["5726","186A"]}
         binding.spinnerHoldingShares.adapter = shareAdapter
 
         binding.buttonSaveReconnect.setOnClickListener {
-            val host = binding.editHost.text?.toString().orEmpty().trim()
-            val reconnectSecText = binding.editReconnectSec.text?.toString().orEmpty().trim()
-            viewModel.saveSettingsAndReconnect(host, reconnectSecText)
+            viewModel.saveSettingsAndReconnect(
+                binding.editHost.text?.toString().orEmpty().trim(),
+                binding.editReconnectSec.text?.toString().orEmpty().trim()
+            )
         }
-
-        binding.buttonReset.setOnClickListener {
-            viewModel.resetSettingsAndReconnect()
-        }
+        binding.buttonReset.setOnClickListener { viewModel.resetSettingsAndReconnect() }
 
         binding.buttonSendWatch.setOnClickListener {
-            val targetCode = binding.spinnerTargetCode.selectedItem?.toString().orEmpty().trim()
+            val targetLabel = binding.spinnerTargetCode.selectedItem?.toString().orEmpty()
             val inputText = binding.editSendCode.text?.toString().orEmpty().trim()
-            viewModel.sendWatchCommand(targetCode, inputText)
+            viewModel.sendWatchCommand(targetLabel, inputText)
         }
 
         binding.buttonApplyHolding.setOnClickListener {
-            val code = binding.spinnerHoldingCode.selectedItem?.toString().orEmpty().trim()
-            val shares = binding.spinnerHoldingShares.selectedItem?.toString().orEmpty().trim().toIntOrNull() ?: 0
+            val codeLabel = binding.spinnerHoldingCode.selectedItem?.toString().orEmpty()
+            val shares = binding.spinnerHoldingShares.selectedItem?.toString().orEmpty().toIntOrNull() ?: 0
             val buyPrice = binding.editBuyPrice.text?.toString().orEmpty().trim()
-            viewModel.applyHolding(code, shares, buyPrice)
+            viewModel.applyHolding(codeLabel, shares, buyPrice)
         }
 
         viewLifecycleOwner.lifecycleScope.launch {
@@ -94,7 +81,6 @@ JSON: {"type":"watch_codes","codes":["5726","186A"]}
                         }
                     }
                 }
-
                 launch {
                     viewModel.reconnectSec.collect { sec ->
                         val secText = sec.toString()
@@ -105,11 +91,10 @@ JSON: {"type":"watch_codes","codes":["5726","186A"]}
                         }
                     }
                 }
-
                 launch {
-                    viewModel.availableCodes.collect { codes ->
+                    viewModel.availableCodes.collect { labels ->
                         codeAdapter.clear()
-                        codeAdapter.addAll(codes.toList())
+                        codeAdapter.addAll(labels)
                         codeAdapter.notifyDataSetChanged()
                     }
                 }

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ver 2.16-00 -->
+<resources>
+    <color name="profit_plus">#B00020</color>
+    <color name="profit_minus">#1565C0</color>
+</resources>
