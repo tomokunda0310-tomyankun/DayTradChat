@@ -1,5 +1,5 @@
 //app/src/main/java/com/daytradchat/papa/MainActivity.kt
-// ver 2.13-15
+// ver 2.15-20
 
 package com.daytradchat.papa
 
@@ -38,18 +38,16 @@ class MainActivity : AppCompatActivity() {
             }
         }.attach()
 
-        // ★確実にタブ文字サイズ変更
         binding.tabLayout.post {
             val vg = binding.tabLayout.getChildAt(0) as? ViewGroup
             vg?.let {
                 for (i in 0 until it.childCount) {
-                    val tabView = it.getChildAt(i) as? ViewGroup
-                    tabView?.let { tvg ->
-                        for (j in 0 until tvg.childCount) {
-                            val v = tvg.getChildAt(j)
-                            if (v is TextView) {
-                                v.setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
-                            }
+                    val tabView = it.getChildAt(i) as? ViewGroup ?: continue
+                    for (j in 0 until tabView.childCount) {
+                        val v = tabView.getChildAt(j)
+                        if (v is TextView) {
+                            v.setTextSize(TypedValue.COMPLEX_UNIT_SP, 9f)
+                            v.isSingleLine = true
                         }
                     }
                 }
@@ -69,8 +67,6 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        if (isFinishing) {
-            viewModel.stopSocket()
-        }
+        if (isFinishing) viewModel.stopSocket()
     }
 }

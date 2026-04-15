@@ -1,5 +1,5 @@
 //app/src/main/java/com/daytradchat/papa/model/UiModels.kt
-//ver 2.13-13
+//ver 2.15-20
 
 package com.daytradchat.papa.model
 
@@ -13,6 +13,7 @@ data class SignalCardUiModel(
     val changeRate: Double,
     val reasonShort: String,
     val updatedAt: String,
+    val profitText: String = "",
     val isEmpty: Boolean = false
 )
 

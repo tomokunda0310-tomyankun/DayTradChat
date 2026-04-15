@@ -1,5 +1,5 @@
 //app/src/main/java/com/daytradchat/papa/ui/SettingsFragment.kt
-//ver 2.13-13
+//ver 2.15-22
 
 package com.daytradchat.papa.ui
 
@@ -7,6 +7,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ArrayAdapter
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.Lifecycle
@@ -22,6 +23,8 @@ class SettingsFragment : Fragment() {
     private val binding get() = _binding!!
 
     private val viewModel: TradeViewModel by activityViewModels()
+    private lateinit var codeAdapter: ArrayAdapter<String>
+    private lateinit var shareAdapter: ArrayAdapter<String>
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -33,17 +36,51 @@ class SettingsFragment : Fragment() {
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        binding.textVersion.text = "ver 2.13-13"
+        binding.textVersion.text = "ver 2.15-22"
         binding.textPort.text = "Port: ${SocketConfig.SERVER_PORT}"
+        binding.textSendSpec.text = """送信仕様
+JSON: {"type":"watch_codes","codes":["5726","186A"]}
+文字列全入替: 5726,186A,6323
+文字列1銘柄交換: 5726#7011"""
+
+        codeAdapter = ArrayAdapter(
+            requireContext(),
+            android.R.layout.simple_spinner_item,
+            mutableListOf<String>()
+        )
+        codeAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        binding.spinnerTargetCode.adapter = codeAdapter
+        binding.spinnerHoldingCode.adapter = codeAdapter
+
+        shareAdapter = ArrayAdapter(
+            requireContext(),
+            android.R.layout.simple_spinner_item,
+            (1..10).map { (it * 100).toString() }.toMutableList()
+        )
+        shareAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        binding.spinnerHoldingShares.adapter = shareAdapter
 
         binding.buttonSaveReconnect.setOnClickListener {
             val host = binding.editHost.text?.toString().orEmpty().trim()
-            val reconnectSec = binding.editReconnectSec.text?.toString()?.trim()?.toIntOrNull() ?: 0
-            viewModel.saveSettingsAndReconnect(host, reconnectSec)
+            val reconnectSecText = binding.editReconnectSec.text?.toString().orEmpty().trim()
+            viewModel.saveSettingsAndReconnect(host, reconnectSecText)
         }
 
         binding.buttonReset.setOnClickListener {
             viewModel.resetSettingsAndReconnect()
+        }
+
+        binding.buttonSendWatch.setOnClickListener {
+            val targetCode = binding.spinnerTargetCode.selectedItem?.toString().orEmpty().trim()
+            val inputText = binding.editSendCode.text?.toString().orEmpty().trim()
+            viewModel.sendWatchCommand(targetCode, inputText)
+        }
+
+        binding.buttonApplyHolding.setOnClickListener {
+            val code = binding.spinnerHoldingCode.selectedItem?.toString().orEmpty().trim()
+            val shares = binding.spinnerHoldingShares.selectedItem?.toString().orEmpty().trim().toIntOrNull() ?: 0
+            val buyPrice = binding.editBuyPrice.text?.toString().orEmpty().trim()
+            viewModel.applyHolding(code, shares, buyPrice)
         }
 
         viewLifecycleOwner.lifecycleScope.launch {
@@ -66,6 +103,14 @@ class SettingsFragment : Fragment() {
                             binding.editReconnectSec.setText(secText)
                             binding.editReconnectSec.setSelection(secText.length)
                         }
+                    }
+                }
+
+                launch {
+                    viewModel.availableCodes.collect { codes ->
+                        codeAdapter.clear()
+                        codeAdapter.addAll(codes.toList())
+                        codeAdapter.notifyDataSetChanged()
                     }
                 }
             }
