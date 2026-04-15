@@ -1,5 +1,5 @@
 //app/src/main/java/com/daytradchat/papa/ui/SignalFragment.kt
-//ver 2.16-00
+//ver 2.16-10
 package com.daytradchat.papa.ui
 
 import android.app.AlertDialog
@@ -27,14 +27,11 @@ class SignalFragment : Fragment() {
 
     private val adapter = SignalGridAdapter(
         onItemClick = { item -> showHistoryDialog(item) },
-        profitProvider = { code, price -> viewModel.getProfitDisplay(code, price) }
+        profitProvider = { code, price -> viewModel.getProfitDisplay(code, price) },
+        priceVisualProvider = { code, price -> viewModel.getPriceVisual(code, price) }
     )
 
-    override fun onCreateView(
-        inflater: LayoutInflater,
-        container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View {
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentSignalBinding.inflate(inflater, container, false)
         return binding.root
     }

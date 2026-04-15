@@ -1,5 +1,5 @@
 //app/src/main/java/com/daytradchat/papa/ui/SettingsFragment.kt
-//ver 2.16-00
+//ver 2.16-10
 package com.daytradchat.papa.ui
 
 import android.os.Bundle
@@ -21,6 +21,7 @@ class SettingsFragment : Fragment() {
     private val binding get() = _binding!!
     private val viewModel: TradeViewModel by activityViewModels()
     private lateinit var codeAdapter: ArrayAdapter<String>
+    private lateinit var reconnectAdapter: ArrayAdapter<String>
     private lateinit var shareAdapter: ArrayAdapter<String>
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
@@ -29,17 +30,21 @@ class SettingsFragment : Fragment() {
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        binding.textVersion.text = "ver 2.16-00"
-        binding.textPort.text = "Port: ${SocketConfig.SERVER_PORT}"
-        binding.textSendSpec.text = """送信仕様
-JSON: {"type":"watch_codes","codes":["5726","186A"]}
-文字列全入替: 5726,186A,6323
-文字列1銘柄交換: 5726#7011"""
+        binding.textVersion.text = "ver 2.16-10"
+        binding.textPortInline.text = "port: ${SocketConfig.SERVER_PORT}"
 
         codeAdapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, mutableListOf<String>())
         codeAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         binding.spinnerTargetCode.adapter = codeAdapter
         binding.spinnerHoldingCode.adapter = codeAdapter
+
+        reconnectAdapter = ArrayAdapter(
+            requireContext(),
+            android.R.layout.simple_spinner_item,
+            (1..10).map { it.toString() }.toMutableList()
+        )
+        reconnectAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        binding.spinnerReconnectSec.adapter = reconnectAdapter
 
         shareAdapter = ArrayAdapter(
             requireContext(),
@@ -50,12 +55,14 @@ JSON: {"type":"watch_codes","codes":["5726","186A"]}
         binding.spinnerHoldingShares.adapter = shareAdapter
 
         binding.buttonSaveReconnect.setOnClickListener {
-            viewModel.saveSettingsAndReconnect(
-                binding.editHost.text?.toString().orEmpty().trim(),
-                binding.editReconnectSec.text?.toString().orEmpty().trim()
-            )
+            val host = binding.editHostInline.text?.toString().orEmpty().trim()
+            val sec = binding.spinnerReconnectSec.selectedItem?.toString().orEmpty()
+            viewModel.saveSettingsAndReconnect(host, sec)
         }
-        binding.buttonReset.setOnClickListener { viewModel.resetSettingsAndReconnect() }
+
+        binding.buttonReset.setOnClickListener {
+            viewModel.resetSettingsAndReconnect()
+        }
 
         binding.buttonSendWatch.setOnClickListener {
             val targetLabel = binding.spinnerTargetCode.selectedItem?.toString().orEmpty()
@@ -74,20 +81,18 @@ JSON: {"type":"watch_codes","codes":["5726","186A"]}
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch {
                     viewModel.currentHost.collect { host ->
-                        val current = binding.editHost.text?.toString().orEmpty()
+                        val current = binding.editHostInline.text?.toString().orEmpty()
                         if (current != host) {
-                            binding.editHost.setText(host)
-                            binding.editHost.setSelection(host.length)
+                            binding.editHostInline.setText(host)
+                            binding.editHostInline.setSelection(host.length)
                         }
                     }
                 }
                 launch {
                     viewModel.reconnectSec.collect { sec ->
-                        val secText = sec.toString()
-                        val current = binding.editReconnectSec.text?.toString().orEmpty()
-                        if (current != secText) {
-                            binding.editReconnectSec.setText(secText)
-                            binding.editReconnectSec.setSelection(secText.length)
+                        val index = sec.coerceIn(1, 10) - 1
+                        if (binding.spinnerReconnectSec.selectedItemPosition != index) {
+                            binding.spinnerReconnectSec.setSelection(index)
                         }
                     }
                 }

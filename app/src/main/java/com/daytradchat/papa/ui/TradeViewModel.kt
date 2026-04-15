@@ -1,10 +1,11 @@
 //app/src/main/java/com/daytradchat/papa/ui/TradeViewModel.kt
-//ver 2.16-01
+//ver 2.16-11
 package com.daytradchat.papa.ui
 
 import android.app.Application
 import android.content.Context
 import androidx.lifecycle.AndroidViewModel
+import com.daytradchat.papa.R
 import com.daytradchat.papa.model.LogLineUiModel
 import com.daytradchat.papa.model.MarketItem
 import com.daytradchat.papa.model.ServerMessage
@@ -36,8 +37,10 @@ class TradeViewModel(application: Application) : AndroidViewModel(application) {
 
     private val signalMap = linkedMapOf<String, SignalItem>()
     private val historyMap = linkedMapOf<String, MutableList<String>>()
-    private var marketItem: MarketItem? = null
     private val holdings = linkedMapOf<String, HoldingInfo>()
+    private val previousPriceMap = mutableMapOf<String, Double>()
+    private val startPriceMap = mutableMapOf<String, Double>()
+    private var marketItem: MarketItem? = null
 
     private val _statusLeft = MutableStateFlow("未接続")
     val statusLeft: StateFlow<String> = _statusLeft.asStateFlow()
@@ -60,7 +63,9 @@ class TradeViewModel(application: Application) : AndroidViewModel(application) {
     private val _currentHost = MutableStateFlow(configStore.loadHost())
     val currentHost: StateFlow<String> = _currentHost.asStateFlow()
 
-    private val _reconnectSec = MutableStateFlow(configStore.loadReconnectSec())
+    private val _reconnectSec = MutableStateFlow(
+        configStore.loadReconnectSec().coerceIn(1, 10).let { if (it == 0) 1 else it }
+    )
     val reconnectSec: StateFlow<Int> = _reconnectSec.asStateFlow()
 
     private val _availableCodes = MutableStateFlow<List<String>>(emptyList())
@@ -103,11 +108,11 @@ class TradeViewModel(application: Application) : AndroidViewModel(application) {
     fun stopSocket() = socketClient.stopAsync()
 
     fun saveSettingsAndReconnect(host: String, reconnectSecText: String) {
-        val sec = reconnectSecText.toIntOrNull()?.coerceAtLeast(0) ?: 0
+        val sec = reconnectSecText.toIntOrNull()?.coerceIn(1, 10) ?: 1
         configStore.saveHost(host)
         configStore.saveReconnectSec(sec)
         _currentHost.value = configStore.loadHost()
-        _reconnectSec.value = configStore.loadReconnectSec()
+        _reconnectSec.value = configStore.loadReconnectSec().coerceIn(1, 10)
         _hostLine.value = hostLineText()
         socketClient.restart()
     }
@@ -115,7 +120,7 @@ class TradeViewModel(application: Application) : AndroidViewModel(application) {
     fun resetSettingsAndReconnect() {
         configStore.resetAll()
         _currentHost.value = configStore.loadHost()
-        _reconnectSec.value = configStore.loadReconnectSec()
+        _reconnectSec.value = configStore.loadReconnectSec().coerceIn(1, 10).let { if (it == 0) 1 else it }
         _hostLine.value = hostLineText()
         socketClient.restart()
     }
@@ -179,6 +184,21 @@ class TradeViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun getPriceVisual(code: String, currentPrice: Double): PriceVisual {
+        val prev = previousPriceMap[code]
+        val start = startPriceMap[code] ?: currentPrice
+
+        val bgColor = when {
+            prev == null -> R.color.skip_bg
+            currentPrice > prev -> R.color.sell_bg
+            currentPrice < prev -> R.color.buy_bg
+            else -> R.color.skip_bg
+        }
+
+        val codeNameColor = if (currentPrice > start) R.color.profit_plus else R.color.profit_minus
+        return PriceVisual(bgColorRes = bgColor, codeNameColorRes = codeNameColor)
+    }
+
     fun buildHistoryDialogText(code: String): String {
         val rows = historyMap[code].orEmpty()
         return if (rows.isEmpty()) "履歴なし" else rows.joinToString("\n")
@@ -204,7 +224,15 @@ class TradeViewModel(application: Application) : AndroidViewModel(application) {
                 }
                 symbols.forEach { item ->
                     val code = extractItemCode(item)
-                    if (code.isNotBlank()) signalMap[code] = item
+                    if (code.isNotBlank()) {
+                        val price = item.price ?: item.data?.price ?: 0.0
+                        if (!startPriceMap.containsKey(code)) {
+                            startPriceMap[code] = price
+                        }
+                        val oldPrice = signalMap[code]?.price ?: signalMap[code]?.data?.price ?: price
+                        previousPriceMap[code] = oldPrice
+                        signalMap[code] = item
+                    }
                 }
                 if (_selectedDisplayCodes.value.isEmpty()) {
                     _selectedDisplayCodes.value = autoSelectedCodes()
@@ -244,13 +272,19 @@ class TradeViewModel(application: Application) : AndroidViewModel(application) {
                 isEmpty = false
             )
         } else {
+            val idxCode = m.code ?: "NIKKEI225"
+            val idxPrice = m.price ?: 0.0
+            if (!startPriceMap.containsKey(idxCode)) {
+                startPriceMap[idxCode] = idxPrice
+            }
+            previousPriceMap[idxCode] = previousPriceMap[idxCode] ?: idxPrice
             SignalCardUiModel(
                 slotId = "slot_0",
-                code = m.code ?: "NIKKEI225",
+                code = idxCode,
                 name = m.name ?: "日経平均",
                 signalType = "INDEX",
                 score = 0,
-                price = m.price ?: 0.0,
+                price = idxPrice,
                 changeRate = m.change_rate ?: 0.0,
                 reasonShort = "日経平均",
                 updatedAt = shortTime(m.captured_at ?: ""),
@@ -292,18 +326,30 @@ class TradeViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun updateAvailableCodes() {
-        _availableCodes.value = signalMap.values.mapNotNull { item ->
-            val code = extractItemCode(item)
-            if (code.isBlank()) null else "$code ${shortName(item.name ?: item.data?.name ?: "")}"
-        }
+        _availableCodes.value = signalMap.values
+            .mapNotNull { item ->
+                val code = extractItemCode(item)
+                val name = item.name ?: item.data?.name ?: ""
+                if (code.isBlank()) null else code to shortName(name)
+            }
+            .sortedBy { it.second }
+            .map { "${it.first} ${it.second}" }
     }
 
-    private fun autoSelectedCodes(): List<String> = signalMap.keys.take(8).toList()
+    private fun autoSelectedCodes(): List<String> {
+        return signalMap.values
+            .mapNotNull { item ->
+                val code = extractItemCode(item)
+                val name = item.name ?: item.data?.name ?: ""
+                if (code.isBlank()) null else code to name
+            }
+            .sortedBy { it.second }
+            .take(8)
+            .map { it.first }
+    }
 
     private fun shortName(name: String): String = if (name.length <= 10) name else name.take(10) + "…"
-
     private fun extractItemCode(item: SignalItem): String = item.code ?: item.data?.code ?: ""
-
     private fun extractCode(label: String): String = label.substringBefore(" ").trim()
 
     private fun rememberHistory(code: String, price: Double, updatedAt: String, reason: String, score: Int) {
@@ -343,7 +389,9 @@ class TradeViewModel(application: Application) : AndroidViewModel(application) {
                 if (parts.size == 2) {
                     val shares = parts[0].toIntOrNull() ?: 0
                     val buyPrice = parts[1].toDoubleOrNull() ?: 0.0
-                    if (shares > 0 && buyPrice > 0.0) holdings[code] = HoldingInfo(shares, buyPrice)
+                    if (shares > 0 && buyPrice > 0.0) {
+                        holdings[code] = HoldingInfo(shares, buyPrice)
+                    }
                 }
             }
         }

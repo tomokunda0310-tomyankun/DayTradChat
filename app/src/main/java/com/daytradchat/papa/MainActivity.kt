@@ -1,6 +1,5 @@
 //app/src/main/java/com/daytradchat/papa/MainActivity.kt
-// ver 2.15-20
-
+//ver 2.16-10
 package com.daytradchat.papa
 
 import android.os.Bundle
@@ -28,27 +27,25 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         binding.viewPager.adapter = MainPagerAdapter(this)
-
         TabLayoutMediator(binding.tabLayout, binding.viewPager) { tab, position ->
             tab.text = when (position) {
                 0 -> "シグナル"
                 1 -> "ログ"
-                2 -> "設定"
+                2 -> "設定1"
+                3 -> "設定2"
                 else -> "システム"
             }
         }.attach()
 
-        binding.tabLayout.post {
-            val vg = binding.tabLayout.getChildAt(0) as? ViewGroup
-            vg?.let {
-                for (i in 0 until it.childCount) {
-                    val tabView = it.getChildAt(i) as? ViewGroup ?: continue
-                    for (j in 0 until tabView.childCount) {
-                        val v = tabView.getChildAt(j)
-                        if (v is TextView) {
-                            v.setTextSize(TypedValue.COMPLEX_UNIT_SP, 9f)
-                            v.isSingleLine = true
-                        }
+        val tabStrip = binding.tabLayout.getChildAt(0) as? ViewGroup
+        if (tabStrip != null) {
+            for (i in 0 until tabStrip.childCount) {
+                val tabView = tabStrip.getChildAt(i) as? ViewGroup ?: continue
+                for (j in 0 until tabView.childCount) {
+                    val v = tabView.getChildAt(j)
+                    if (v is TextView) {
+                        v.setTextSize(TypedValue.COMPLEX_UNIT_SP, 9f)
+                        v.maxLines = 1
                     }
                 }
             }

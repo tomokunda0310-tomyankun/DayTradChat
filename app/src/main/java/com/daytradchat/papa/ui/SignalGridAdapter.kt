@@ -1,8 +1,9 @@
 //app/src/main/java/com/daytradchat/papa/ui/SignalGridAdapter.kt
-//ver 2.16-00
+//ver 2.16-10
 package com.daytradchat.papa.ui
 
 import android.util.TypedValue
+import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.core.content.ContextCompat
@@ -12,6 +13,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.daytradchat.papa.R
 import com.daytradchat.papa.databinding.ItemSignalGridBinding
 import com.daytradchat.papa.model.SignalCardUiModel
+import java.text.DecimalFormat
 import kotlin.math.abs
 
 data class ProfitDisplay(
@@ -19,14 +21,20 @@ data class ProfitDisplay(
     val isPositive: Boolean? = null
 )
 
+data class PriceVisual(
+    val bgColorRes: Int,
+    val codeNameColorRes: Int
+)
+
 class SignalGridAdapter(
     private val onItemClick: (SignalCardUiModel) -> Unit,
-    private val profitProvider: (String, Double) -> ProfitDisplay
+    private val profitProvider: (String, Double) -> ProfitDisplay,
+    private val priceVisualProvider: (String, Double) -> PriceVisual
 ) : ListAdapter<SignalCardUiModel, SignalGridAdapter.SignalViewHolder>(DiffCallback) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): SignalViewHolder {
         val binding = ItemSignalGridBinding.inflate(LayoutInflater.from(parent.context), parent, false)
-        return SignalViewHolder(binding, onItemClick, profitProvider)
+        return SignalViewHolder(binding, onItemClick, profitProvider, priceVisualProvider)
     }
 
     override fun onBindViewHolder(holder: SignalViewHolder, position: Int) {
@@ -36,7 +44,8 @@ class SignalGridAdapter(
     class SignalViewHolder(
         private val binding: ItemSignalGridBinding,
         private val onItemClick: (SignalCardUiModel) -> Unit,
-        private val profitProvider: (String, Double) -> ProfitDisplay
+        private val profitProvider: (String, Double) -> ProfitDisplay,
+        private val priceVisualProvider: (String, Double) -> PriceVisual
     ) : RecyclerView.ViewHolder(binding.root) {
 
         fun bind(item: SignalCardUiModel) {
@@ -50,39 +59,28 @@ class SignalGridAdapter(
             binding.textSub2.text = item.reasonShort
             binding.textUpdatedAt.text = item.updatedAt.takeLast(8)
 
+            val visual = priceVisualProvider(item.code, item.price)
+            binding.rootSignal.setBackgroundColor(ContextCompat.getColor(binding.root.context, visual.bgColorRes))
+            binding.textCode.setTextColor(ContextCompat.getColor(binding.root.context, visual.codeNameColorRes))
+            binding.textName.setTextColor(ContextCompat.getColor(binding.root.context, visual.codeNameColorRes))
+
+            val priceColor = ContextCompat.getColor(binding.root.context, R.color.text_primary)
+            val subColor = ContextCompat.getColor(binding.root.context, R.color.text_secondary)
+            binding.textPrice.setTextColor(priceColor)
+            binding.textDelta.setTextColor(subColor)
+            binding.textSub1.setTextColor(subColor)
+            binding.textSub2.setTextColor(subColor)
+            binding.textUpdatedAt.setTextColor(subColor)
+
             val profit = profitProvider(item.code, item.price)
             binding.textProfit.text = profit.text
             when (profit.isPositive) {
                 true -> binding.textProfit.setTextColor(ContextCompat.getColor(binding.root.context, R.color.profit_plus))
                 false -> binding.textProfit.setTextColor(ContextCompat.getColor(binding.root.context, R.color.profit_minus))
-                null -> binding.textProfit.setTextColor(ContextCompat.getColor(binding.root.context, R.color.text_secondary))
+                null -> binding.textProfit.setTextColor(subColor)
             }
 
-            val type = item.signalType.uppercase()
-            val (bgColor, fgColor) = when (type) {
-                "BUY" -> Pair(
-                    ContextCompat.getColor(binding.root.context, R.color.buy_bg),
-                    ContextCompat.getColor(binding.root.context, R.color.buy_text)
-                )
-                "SELL" -> Pair(
-                    ContextCompat.getColor(binding.root.context, R.color.sell_bg),
-                    ContextCompat.getColor(binding.root.context, R.color.sell_text)
-                )
-                "INDEX" -> Pair(
-                    ContextCompat.getColor(binding.root.context, R.color.buy_bg),
-                    ContextCompat.getColor(binding.root.context, R.color.buy_text)
-                )
-                else -> Pair(
-                    ContextCompat.getColor(binding.root.context, R.color.skip_bg),
-                    ContextCompat.getColor(binding.root.context, R.color.skip_text)
-                )
-            }
-
-            binding.rootSignal.setBackgroundColor(bgColor)
-            listOf(
-                binding.textCode, binding.textName, binding.textPrice,
-                binding.textDelta, binding.textSub1, binding.textSub2, binding.textUpdatedAt
-            ).forEach { it.setTextColor(fgColor) }
+            binding.textPrice.gravity = Gravity.END
 
             val isIndex = item.code.equals("NIKKEI225", ignoreCase = true)
             if (isIndex) {
@@ -98,11 +96,12 @@ class SignalGridAdapter(
             binding.textSub1.setTextSize(TypedValue.COMPLEX_UNIT_SP, 7f)
             binding.textSub2.setTextSize(TypedValue.COMPLEX_UNIT_SP, 7f)
             binding.textUpdatedAt.setTextSize(TypedValue.COMPLEX_UNIT_SP, 7f)
-            binding.textProfit.setTextSize(TypedValue.COMPLEX_UNIT_SP, 9f)
+            binding.textProfit.setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
         }
 
         private fun formatPrice(v: Double): String {
-            return if (abs(v - v.toLong().toDouble()) < 0.000001) v.toLong().toString() else "%.1f".format(v)
+            val noDecimal = abs(v - v.toLong().toDouble()) < 0.000001
+            return if (noDecimal) DecimalFormat("#,###").format(v.toLong()) else DecimalFormat("#,##0.0").format(v)
         }
 
         private fun formatSigned(v: Double): String {

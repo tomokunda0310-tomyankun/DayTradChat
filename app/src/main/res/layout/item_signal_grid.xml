@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- ver 2.16-00 -->
+<!-- ver 2.16-10 -->
 <!-- app/src/main/res/layout/item_signal_grid.xml -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/rootSignal"
     android:layout_width="match_parent"
-    android:layout_height="166dp"
+    android:layout_height="160dp"
     android:layout_margin="4dp"
     android:background="@color/bg_surface"
     android:orientation="vertical"
@@ -14,18 +14,18 @@
         android:id="@+id/textCode"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:maxLines="1"
         android:ellipsize="end"
+        android:maxLines="1"
         android:text="402A"
-        android:textStyle="bold"
-        android:textSize="10sp" />
+        android:textSize="10sp"
+        android:textStyle="bold" />
 
     <TextView
         android:id="@+id/textName"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:maxLines="1"
         android:ellipsize="end"
+        android:maxLines="1"
         android:text="アクセルスペース"
         android:textSize="7sp" />
 
@@ -34,9 +34,10 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="2dp"
+        android:gravity="end"
         android:text="707"
-        android:textStyle="bold"
-        android:textSize="18sp" />
+        android:textSize="18sp"
+        android:textStyle="bold" />
 
     <TextView
         android:id="@+id/textDelta"
@@ -56,8 +57,8 @@
         android:id="@+id/textSub2"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:maxLines="1"
         android:ellipsize="end"
+        android:maxLines="1"
         android:text="ロング候補"
         android:textSize="7sp" />
 
@@ -65,11 +66,11 @@
         android:id="@+id/textProfit"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:maxLines="1"
         android:ellipsize="end"
+        android:maxLines="1"
         android:text=""
-        android:textStyle="bold"
-        android:textSize="9sp" />
+        android:textSize="10sp"
+        android:textStyle="bold" />
 
     <TextView
         android:id="@+id/textUpdatedAt"
