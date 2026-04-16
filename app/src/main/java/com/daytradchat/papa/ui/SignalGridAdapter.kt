@@ -1,5 +1,5 @@
 //app/src/main/java/com/daytradchat/papa/ui/SignalGridAdapter.kt
-//ver 2.16-14b
+//ver 2.16-15
 package com.daytradchat.papa.ui
 
 import android.util.TypedValue
@@ -84,19 +84,19 @@ class SignalGridAdapter(
 
             val isIndex = item.code.equals("NIKKEI225", ignoreCase = true)
             if (isIndex) {
-                binding.textCode.setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
-                binding.textName.setTextSize(TypedValue.COMPLEX_UNIT_SP, 7f)
-                binding.textPrice.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
-            } else {
                 binding.textCode.setTextSize(TypedValue.COMPLEX_UNIT_SP, 9f)
-                binding.textName.setTextSize(TypedValue.COMPLEX_UNIT_SP, 6.5f)
-                binding.textPrice.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
+                binding.textName.setTextSize(TypedValue.COMPLEX_UNIT_SP, 6f)
+                binding.textPrice.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+            } else {
+                binding.textCode.setTextSize(TypedValue.COMPLEX_UNIT_SP, 8f)
+                binding.textName.setTextSize(TypedValue.COMPLEX_UNIT_SP, 5.8f)
+                binding.textPrice.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
             }
-            binding.textDelta.setTextSize(TypedValue.COMPLEX_UNIT_SP, 6.5f)
-            binding.textSub1.setTextSize(TypedValue.COMPLEX_UNIT_SP, 6.5f)
-            binding.textSub2.setTextSize(TypedValue.COMPLEX_UNIT_SP, 6.5f)
-            binding.textUpdatedAt.setTextSize(TypedValue.COMPLEX_UNIT_SP, 6.5f)
-            binding.textProfit.setTextSize(TypedValue.COMPLEX_UNIT_SP, 9f)
+            binding.textDelta.setTextSize(TypedValue.COMPLEX_UNIT_SP, 5.8f)
+            binding.textSub1.setTextSize(TypedValue.COMPLEX_UNIT_SP, 5.8f)
+            binding.textSub2.setTextSize(TypedValue.COMPLEX_UNIT_SP, 5.8f)
+            binding.textUpdatedAt.setTextSize(TypedValue.COMPLEX_UNIT_SP, 5.8f)
+            binding.textProfit.setTextSize(TypedValue.COMPLEX_UNIT_SP, 8f)
         }
 
         private fun formatPrice(v: Double): String {

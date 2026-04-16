@@ -1,5 +1,5 @@
 //app/src/main/java/com/daytradchat/papa/MainActivity.kt
-//ver 2.16-14b
+//ver 2.16-15
 package com.daytradchat.papa
 
 import android.os.Bundle
@@ -36,13 +36,15 @@ class MainActivity : AppCompatActivity() {
                 setTextSize(
                     TypedValue.COMPLEX_UNIT_SP,
                     when (title) {
-                        "シグナル", "システム" -> 8f
-                        else -> 9f
+                        "シグナル", "システム" -> 7f
+                        else -> 8f
                     }
                 )
                 setSingleLine(true)
                 includeFontPadding = false
-                setPadding(4, 0, 4, 0)
+                minHeight = 0
+                minimumHeight = 0
+                setPadding(2, 0, 2, 0)
             }
         }.attach()
 
@@ -50,7 +52,6 @@ class MainActivity : AppCompatActivity() {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch { viewModel.statusLeft.collect { binding.textStatusLeft.text = it } }
                 launch { viewModel.statusRight.collect { binding.textStatusRight.text = it } }
-                launch { viewModel.hostLine.collect { binding.textHostLine.text = it } }
             }
         }
 
