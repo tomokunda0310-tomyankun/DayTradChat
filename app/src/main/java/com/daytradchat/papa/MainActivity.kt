@@ -36,15 +36,15 @@ class MainActivity : AppCompatActivity() {
                 setTextSize(
                     TypedValue.COMPLEX_UNIT_SP,
                     when (title) {
-                        "シグナル", "システム" -> 7f
-                        else -> 8f
+                        "シグナル", "システム" -> 6.5f
+                        else -> 7f
                     }
                 )
                 setSingleLine(true)
                 includeFontPadding = false
                 minHeight = 0
                 minimumHeight = 0
-                setPadding(2, 0, 2, 0)
+                setPadding(1, 0, 1, 0)
             }
         }.attach()
 

@@ -278,7 +278,7 @@ class TradeViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun refreshDisplaySelection() {
-        val visibleCodes = signalMap.keys.filterNot { hiddenDisplayCodes.contains(it) }.take(14)
+        val visibleCodes = signalMap.keys.filterNot { hiddenDisplayCodes.contains(it) }.take(17)
         _selectedDisplayCodes.value = visibleCodes
         _selectedDisplayLabels.value = visibleCodes.map { buildDisplayLabel(it) }
         _canUndoDisplayRemoval.value = lastRemovedDisplayCode != null
@@ -288,11 +288,11 @@ class TradeViewModel(application: Application) : AndroidViewModel(application) {
         rotateDayIfNeeded()
         val list = mutableListOf<SignalCardUiModel>()
         list += buildIndexCard()
-        _selectedDisplayCodes.value.take(14).forEachIndexed { index, code ->
+        _selectedDisplayCodes.value.take(17).forEachIndexed { index, code ->
             list += buildSignalCard("slot_${index + 1}", code)
         }
-        while (list.size < 15) list += emptyStock("slot_${list.size}")
-        _signalItems.value = list.take(15)
+        while (list.size < 18) list += emptyStock("slot_${list.size}")
+        _signalItems.value = list.take(18)
     }
 
     private fun buildIndexCard(): SignalCardUiModel {
@@ -468,7 +468,7 @@ class TradeViewModel(application: Application) : AndroidViewModel(application) {
     private fun createEmptySlots(): List<SignalCardUiModel> {
         val list = mutableListOf<SignalCardUiModel>()
         list += buildIndexCard()
-        for (i in 1 until 15) list += emptyStock("slot_$i")
+        for (i in 1 until 18) list += emptyStock("slot_$i")
         return list
     }
 
