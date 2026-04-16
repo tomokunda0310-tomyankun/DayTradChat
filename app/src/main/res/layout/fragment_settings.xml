@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- ver 2.16-10 -->
+<!-- ver 2.16-13 -->
 <!-- app/src/main/res/layout/fragment_settings.xml -->
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
@@ -16,7 +16,7 @@
             android:id="@+id/textVersion"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="ver 2.16-10"
+            android:text="ver 2.16-13"
             android:textSize="10sp"
             android:textStyle="bold" />
 
@@ -79,8 +79,8 @@
                 android:id="@+id/buttonSaveReconnect"
                 android:layout_width="0dp"
                 android:layout_height="36dp"
-                android:layout_weight="1"
                 android:layout_marginStart="6dp"
+                android:layout_weight="1"
                 android:maxLines="1"
                 android:text="保存して再接続"
                 android:textSize="9sp" />
@@ -99,22 +99,17 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:text="サーバ送信（銘柄入替）"
+            android:text="サーバ送信（銘柄コードのみ）"
             android:textSize="10sp"
             android:textStyle="bold" />
-
-        <Spinner
-            android:id="@+id/spinnerTargetCode"
-            android:layout_width="match_parent"
-            android:layout_height="36dp"
-            android:layout_marginTop="4dp" />
 
         <EditText
             android:id="@+id/editSendCode"
             android:layout_width="match_parent"
             android:layout_height="36dp"
             android:layout_marginTop="4dp"
-            android:hint="新コード or watch_codes文字列"
+            android:hint="銘柄コードを送信"
+            android:inputType="text"
             android:padding="6dp"
             android:textSize="10sp" />
 
@@ -131,7 +126,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:text="保有情報"
+            android:text="投入 / 終了"
             android:textSize="10sp"
             android:textStyle="bold" />
 
@@ -148,29 +143,23 @@
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
-            <Spinner
-                android:id="@+id/spinnerHoldingShares"
-                android:layout_width="90dp"
-                android:layout_height="36dp" />
-
             <EditText
                 android:id="@+id/editBuyPrice"
                 android:layout_width="0dp"
                 android:layout_height="36dp"
                 android:layout_weight="1"
-                android:layout_marginStart="6dp"
-                android:hint="取得単価"
+                android:hint="取得単価（0で終了）"
                 android:inputType="numberDecimal"
                 android:padding="6dp"
                 android:textSize="10sp" />
 
             <Button
                 android:id="@+id/buttonApplyHolding"
-                android:layout_width="86dp"
+                android:layout_width="96dp"
                 android:layout_height="36dp"
                 android:layout_marginStart="6dp"
                 android:maxLines="1"
-                android:text="投入"
+                android:text="投入 / 終了"
                 android:textSize="10sp" />
         </LinearLayout>
     </LinearLayout>

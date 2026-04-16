@@ -1,12 +1,14 @@
 //app/src/main/java/com/daytradchat/papa/ui/DisplaySymbolsFragment.kt
-//ver 2.16-00
+//ver 2.16-13
 package com.daytradchat.papa.ui
 
 import android.os.Bundle
+import android.os.SystemClock
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
+import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.Lifecycle
@@ -19,6 +21,8 @@ class DisplaySymbolsFragment : Fragment() {
     private var _binding: FragmentDisplaySymbolsBinding? = null
     private val binding get() = _binding!!
     private val viewModel: TradeViewModel by activityViewModels()
+    private var lastTapPosition: Int = -1
+    private var lastTapAt: Long = 0L
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentDisplaySymbolsBinding.inflate(inflater, container, false)
@@ -26,17 +30,23 @@ class DisplaySymbolsFragment : Fragment() {
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        val allAdapter = ArrayAdapter<String>(requireContext(), android.R.layout.simple_list_item_1, mutableListOf())
         val selectedAdapter = ArrayAdapter<String>(requireContext(), android.R.layout.simple_list_item_1, mutableListOf())
-
-        binding.listAllCodes.adapter = allAdapter
         binding.listSelectedCodes.adapter = selectedAdapter
 
-        binding.listAllCodes.setOnItemClickListener { _, _, position, _ ->
-            viewModel.addDisplayCode(allAdapter.getItem(position).orEmpty())
-        }
         binding.listSelectedCodes.setOnItemClickListener { _, _, position, _ ->
-            viewModel.removeDisplayCodeAt(position)
+            val now = SystemClock.elapsedRealtime()
+            if (position == lastTapPosition && now - lastTapAt <= 500L) {
+                viewModel.removeDisplayCodeAt(position)
+                lastTapPosition = -1
+                lastTapAt = 0L
+            } else {
+                lastTapPosition = position
+                lastTapAt = now
+                Toast.makeText(requireContext(), "同じ行をもう一度タップで削除", Toast.LENGTH_SHORT).show()
+            }
+        }
+        binding.buttonUndoRemove.setOnClickListener {
+            viewModel.restoreLastRemovedDisplayCode()
         }
         binding.buttonResetDisplay.setOnClickListener {
             viewModel.resetDisplayCodesToday()
@@ -45,17 +55,16 @@ class DisplaySymbolsFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch {
-                    viewModel.availableCodes.collect { codes ->
-                        allAdapter.clear()
-                        allAdapter.addAll(codes)
-                        allAdapter.notifyDataSetChanged()
+                    viewModel.selectedDisplayLabels.collect { selected ->
+                        selectedAdapter.clear()
+                        selectedAdapter.addAll(selected.toList())
+                        selectedAdapter.notifyDataSetChanged()
                     }
                 }
                 launch {
-                    viewModel.selectedDisplayLabels.collect { selected ->
-                        selectedAdapter.clear()
-                        selectedAdapter.addAll(selected)
-                        selectedAdapter.notifyDataSetChanged()
+                    viewModel.canUndoDisplayRemoval.collect { canUndo ->
+                        binding.buttonUndoRemove.isEnabled = canUndo
+                        binding.buttonUndoRemove.alpha = if (canUndo) 1f else 0.5f
                     }
                 }
             }

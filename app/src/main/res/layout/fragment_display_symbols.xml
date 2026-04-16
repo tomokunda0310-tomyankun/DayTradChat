@@ -1,47 +1,58 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- ver 2.16-00 -->
+<!-- ver 2.16-13 -->
 <!-- app/src/main/res/layout/fragment_display_symbols.xml -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
     android:background="@color/bg_app"
+    android:orientation="vertical"
     android:padding="8dp">
 
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="表示銘柄（タップで追加）"
+        android:text="現在表示（ダブルタップで削除）"
         android:textSize="11sp"
         android:textStyle="bold" />
-
-    <ListView
-        android:id="@+id/listAllCodes"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:dividerHeight="1dp" />
 
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
-        android:text="現在表示（タップで削除）"
-        android:textSize="11sp"
-        android:textStyle="bold" />
+        android:layout_marginTop="4dp"
+        android:text="受信順に表示します。日経平均は固定です。"
+        android:textSize="9sp" />
 
     <ListView
         android:id="@+id/listSelectedCodes"
         android:layout_width="match_parent"
-        android:layout_height="120dp"
+        android:layout_height="0dp"
+        android:layout_marginTop="6dp"
+        android:layout_weight="1"
         android:dividerHeight="1dp" />
 
-    <Button
-        android:id="@+id/buttonResetDisplay"
+    <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="42dp"
+        android:layout_height="wrap_content"
         android:layout_marginTop="6dp"
-        android:text="今日の表示銘柄を初期化"
-        android:textSize="10sp"
-        android:maxLines="1" />
+        android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/buttonUndoRemove"
+            android:layout_width="0dp"
+            android:layout_height="42dp"
+            android:layout_weight="1"
+            android:maxLines="1"
+            android:text="戻す"
+            android:textSize="10sp" />
+
+        <Button
+            android:id="@+id/buttonResetDisplay"
+            android:layout_width="0dp"
+            android:layout_height="42dp"
+            android:layout_marginStart="6dp"
+            android:layout_weight="1"
+            android:maxLines="1"
+            android:text="削除を全解除"
+            android:textSize="10sp" />
+    </LinearLayout>
 </LinearLayout>

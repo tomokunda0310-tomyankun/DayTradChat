@@ -1,11 +1,11 @@
 //app/src/main/java/com/daytradchat/papa/MainActivity.kt
-//ver 2.16-10
+//ver 2.16-13
 package com.daytradchat.papa
 
 import android.os.Bundle
 import android.util.TypedValue
-import android.view.ViewGroup
 import android.widget.TextView
+import androidx.core.content.ContextCompat
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Lifecycle
@@ -27,29 +27,24 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         binding.viewPager.adapter = MainPagerAdapter(this)
+        val titles = listOf("シグナル", "ログ", "設定1", "設定2", "システム")
         TabLayoutMediator(binding.tabLayout, binding.viewPager) { tab, position ->
-            tab.text = when (position) {
-                0 -> "シグナル"
-                1 -> "ログ"
-                2 -> "設定1"
-                3 -> "設定2"
-                else -> "システム"
+            val title = titles[position]
+            tab.customView = TextView(this).apply {
+                text = title
+                setTextColor(ContextCompat.getColor(this@MainActivity, R.color.text_primary))
+                setTextSize(
+                    TypedValue.COMPLEX_UNIT_SP,
+                    when (title) {
+                        "シグナル", "システム" -> 8f
+                        else -> 9f
+                    }
+                )
+                setSingleLine(true)
+                includeFontPadding = false
+                setPadding(4, 0, 4, 0)
             }
         }.attach()
-
-        val tabStrip = binding.tabLayout.getChildAt(0) as? ViewGroup
-        if (tabStrip != null) {
-            for (i in 0 until tabStrip.childCount) {
-                val tabView = tabStrip.getChildAt(i) as? ViewGroup ?: continue
-                for (j in 0 until tabView.childCount) {
-                    val v = tabView.getChildAt(j)
-                    if (v is TextView) {
-                        v.setTextSize(TypedValue.COMPLEX_UNIT_SP, 9f)
-                        v.maxLines = 1
-                    }
-                }
-            }
-        }
 
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
