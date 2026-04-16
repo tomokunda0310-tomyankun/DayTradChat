@@ -1,5 +1,5 @@
 //app/src/main/java/com/daytradchat/papa/ui/SettingsFragment.kt
-//ver 2.16-13
+//ver 2.16-14b
 package com.daytradchat.papa.ui
 
 import android.os.Bundle
@@ -29,7 +29,7 @@ class SettingsFragment : Fragment() {
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        binding.textVersion.text = "ver 2.16-13"
+        binding.textVersion.text = "ver 2.16-14"
         binding.textPortInline.text = "port: ${SocketConfig.SERVER_PORT}"
 
         codeAdapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, mutableListOf<String>())

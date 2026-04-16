@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- ver 2.16-13 -->
+<!-- ver 2.16-14b -->
 <!-- app/src/main/res/layout/fragment_display_symbols.xml -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"

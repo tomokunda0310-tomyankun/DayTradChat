@@ -1,5 +1,5 @@
 //app/src/main/java/com/daytradchat/papa/ui/SignalGridAdapter.kt
-//ver 2.16-10
+//ver 2.16-14b
 package com.daytradchat.papa.ui
 
 import android.util.TypedValue
@@ -64,7 +64,7 @@ class SignalGridAdapter(
             binding.textCode.setTextColor(ContextCompat.getColor(binding.root.context, visual.codeNameColorRes))
             binding.textName.setTextColor(ContextCompat.getColor(binding.root.context, visual.codeNameColorRes))
 
-            val priceColor = ContextCompat.getColor(binding.root.context, R.color.text_primary)
+            val priceColor = ContextCompat.getColor(binding.root.context, visual.codeNameColorRes)
             val subColor = ContextCompat.getColor(binding.root.context, R.color.text_secondary)
             binding.textPrice.setTextColor(priceColor)
             binding.textDelta.setTextColor(subColor)
@@ -84,19 +84,19 @@ class SignalGridAdapter(
 
             val isIndex = item.code.equals("NIKKEI225", ignoreCase = true)
             if (isIndex) {
-                binding.textCode.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
-                binding.textName.setTextSize(TypedValue.COMPLEX_UNIT_SP, 7f)
-                binding.textPrice.setTextSize(TypedValue.COMPLEX_UNIT_SP, 17f)
-            } else {
                 binding.textCode.setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
                 binding.textName.setTextSize(TypedValue.COMPLEX_UNIT_SP, 7f)
-                binding.textPrice.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18f)
+                binding.textPrice.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
+            } else {
+                binding.textCode.setTextSize(TypedValue.COMPLEX_UNIT_SP, 9f)
+                binding.textName.setTextSize(TypedValue.COMPLEX_UNIT_SP, 6.5f)
+                binding.textPrice.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
             }
-            binding.textDelta.setTextSize(TypedValue.COMPLEX_UNIT_SP, 7f)
-            binding.textSub1.setTextSize(TypedValue.COMPLEX_UNIT_SP, 7f)
-            binding.textSub2.setTextSize(TypedValue.COMPLEX_UNIT_SP, 7f)
-            binding.textUpdatedAt.setTextSize(TypedValue.COMPLEX_UNIT_SP, 7f)
-            binding.textProfit.setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
+            binding.textDelta.setTextSize(TypedValue.COMPLEX_UNIT_SP, 6.5f)
+            binding.textSub1.setTextSize(TypedValue.COMPLEX_UNIT_SP, 6.5f)
+            binding.textSub2.setTextSize(TypedValue.COMPLEX_UNIT_SP, 6.5f)
+            binding.textUpdatedAt.setTextSize(TypedValue.COMPLEX_UNIT_SP, 6.5f)
+            binding.textProfit.setTextSize(TypedValue.COMPLEX_UNIT_SP, 9f)
         }
 
         private fun formatPrice(v: Double): String {
