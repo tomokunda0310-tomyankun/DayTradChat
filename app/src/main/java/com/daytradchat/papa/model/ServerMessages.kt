@@ -1,17 +1,28 @@
 //app/src/main/java/com/daytradchat/papa/model/ServerMessages.kt
-//ver 2.15-20
+//ver 2.16-22
 package com.daytradchat.papa.model
+
+data class DisclosureFlags(
+    val today_disclosure_flag: Boolean? = null,
+    val next_business_disclosure_flag: Boolean? = null
+)
 
 data class MarketItem(
     val type: String? = null,
     val code: String? = null,
     val name: String? = null,
+    val side: String? = null,
     val market: String? = null,
     val captured_at: String? = null,
     val price: Double? = null,
+    val change: Double? = null,
     val change_value: Double? = null,
     val change_rate: Double? = null,
     val prev_close: Double? = null,
+    val score: Double? = null,
+    val score_raw: Double? = null,
+    val is_index: Boolean? = null,
+    val category_tags: List<String>? = null,
     val price_time: String? = null,
     val source: String? = null
 )
@@ -77,7 +88,8 @@ data class SignalItem(
     val source: String? = null,
     val data: SignalData? = null,
     val side: String? = null,
-    val score: Int? = null,
+    val score: Double? = null,
+    val score_raw: Double? = null,
     val tick: Double? = null,
     val gap: Double? = null,
     val pts_ratio: Double? = null,
@@ -86,7 +98,17 @@ data class SignalItem(
     val margin_sell: Double? = null,
     val margin_buy: Double? = null,
     val calendar_snippet: String? = null,
-    val disclosure_flags: List<String>? = null
+    val disclosure_flags: DisclosureFlags? = null,
+    val is_client_requested: Boolean? = null,
+    val is_index: Boolean? = null,
+    val is_earnings: Boolean? = null,
+    val earnings_type: String? = null,
+    val category_tags: List<String>? = null,
+    val trade_date: String? = null,
+    val priority_score: Double? = null,
+    val open_price: Double? = null,
+    val high_price: Double? = null,
+    val low_price: Double? = null
 )
 
 sealed class ServerMessage {
@@ -148,5 +170,18 @@ sealed class ServerMessage {
         val type: String? = null,
         val sent_at: String? = null,
         val symbol: SignalItem? = null
+    ) : ServerMessage()
+
+    data class IndexSnapshot(
+        val type: String? = null,
+        val sent_at: String? = null,
+        val index: MarketItem? = null
+    ) : ServerMessage()
+
+    data class GetNowResponse(
+        val type: String? = null,
+        val sent_at: String? = null,
+        val index: MarketItem? = null,
+        val symbols: List<SignalItem>? = null
     ) : ServerMessage()
 }

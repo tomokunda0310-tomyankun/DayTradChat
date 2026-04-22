@@ -1,5 +1,5 @@
 //app/src/main/java/com/daytradchat/papa/ui/TradeViewModel.kt
-//ver 2.16-15
+//ver 2.16-26
 package com.daytradchat.papa.ui
 
 import android.app.Application
@@ -23,8 +23,9 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.UUID
+import kotlin.math.roundToLong
 
-private data class HoldingInfo(val buyPrice: Double)
+private data class HoldingInfo(val shares: Int, val buyPrice: Double)
 
 class TradeViewModel(application: Application) : AndroidViewModel(application) {
     private val parser = ServerMessageParser()
@@ -39,10 +40,6 @@ class TradeViewModel(application: Application) : AndroidViewModel(application) {
     private val holdings = linkedMapOf<String, HoldingInfo>()
     private val previousPriceMap = mutableMapOf<String, Double>()
     private val startPriceMap = mutableMapOf<String, Double>()
-    private val samePriceCountMap = mutableMapOf<String, Int>()
-    private val lastTrendMap = mutableMapOf<String, Int>()
-    private val hiddenDisplayCodes = linkedSetOf<String>()
-    private var lastRemovedDisplayCode: String? = null
     private var marketItem: MarketItem? = null
 
     private val _statusLeft = MutableStateFlow("未接続")
@@ -74,12 +71,8 @@ class TradeViewModel(application: Application) : AndroidViewModel(application) {
     private val _availableCodes = MutableStateFlow<List<String>>(emptyList())
     val availableCodes: StateFlow<List<String>> = _availableCodes.asStateFlow()
 
-    private val _selectedDisplayCodes = MutableStateFlow<List<String>>(emptyList())
-    private val _selectedDisplayLabels = MutableStateFlow<List<String>>(emptyList())
-    val selectedDisplayLabels: StateFlow<List<String>> = _selectedDisplayLabels.asStateFlow()
-
-    private val _canUndoDisplayRemoval = MutableStateFlow(false)
-    val canUndoDisplayRemoval: StateFlow<Boolean> = _canUndoDisplayRemoval.asStateFlow()
+    private val _selectedDisplayCodes = MutableStateFlow(loadDisplayCodes())
+    val selectedDisplayLabels: StateFlow<List<String>> = _selectedDisplayCodes.asStateFlow()
 
     private val socketClient = SocketClient(
         hostProvider = { _currentHost.value },
@@ -104,13 +97,11 @@ class TradeViewModel(application: Application) : AndroidViewModel(application) {
 
     init {
         rotateDayIfNeeded()
-        loadHiddenDisplayCodes()
         loadHoldings()
         _hostLine.value = hostLineText()
         _systemLogItems.value = systemLogStore.loadToday().reversed().map {
             LogLineUiModel(UUID.randomUUID().toString(), it)
         }
-        refreshDisplaySelection()
     }
 
     fun startSocket() = socketClient.start()
@@ -134,72 +125,75 @@ class TradeViewModel(application: Application) : AndroidViewModel(application) {
         socketClient.restart()
     }
 
-    fun sendWatchCommand(inputCode: String) {
-        val payload = inputCode.trim()
-        if (payload.isBlank()) return
-        socketClient.sendRawLine(payload)
+    fun sendWatchCommand(targetLabel: String, inputText: String) {
+        val directCode = extractCode(targetLabel)
+        val parsed = inputText
+            .split(Regex("[,\\s\\n\\r\\t、]+"))
+            .map { normalizeCode(it) }
+            .filter { it.isNotBlank() }
+            .toMutableList()
+        if (parsed.isEmpty() && directCode.isNotBlank()) {
+            parsed += directCode
+        }
+        if (parsed.isEmpty()) return
+        socketClient.sendAddCodes(parsed)
+        appendUserLog("ADD_CODES ${parsed.joinToString(",")}")
     }
 
-    fun applyHolding(codeLabel: String, buyPriceText: String) {
+    fun applyHolding(codeLabel: String, shares: Int, buyPriceText: String) {
         val code = extractCode(codeLabel)
-        if (code.isBlank()) return
         val buyPrice = buyPriceText.toDoubleOrNull() ?: return
-        if (buyPrice <= 0.0) {
-            holdings.remove(code)
-        } else {
-            holdings[code] = HoldingInfo(buyPrice = buyPrice)
-        }
+        if (code.isBlank() || shares <= 0) return
+        holdings[code] = HoldingInfo(shares, buyPrice)
         saveHoldings()
         rebuildSignalItems()
     }
 
-    fun removeDisplayCodeAt(position: Int) {
-        val current = _selectedDisplayCodes.value
-        if (position !in current.indices) return
-        val code = current[position]
-        hiddenDisplayCodes.add(code)
-        lastRemovedDisplayCode = code
-        saveHiddenDisplayCodes()
-        refreshDisplaySelection()
+    fun addDisplayCode(label: String) {
+        val code = extractCode(label)
+        if (code.isBlank()) return
+        val current = _selectedDisplayCodes.value.toMutableList()
+        if (current.contains(code)) return
+        if (current.size >= 8) return
+        current.add(code)
+        _selectedDisplayCodes.value = current
+        saveDisplayCodes(current)
         rebuildSignalItems()
     }
 
-    fun restoreLastRemovedDisplayCode() {
-        val code = lastRemovedDisplayCode ?: return
-        hiddenDisplayCodes.remove(code)
-        lastRemovedDisplayCode = null
-        saveHiddenDisplayCodes()
-        refreshDisplaySelection()
+    fun removeDisplayCodeAt(position: Int) {
+        val current = _selectedDisplayCodes.value.toMutableList()
+        if (position !in current.indices) return
+        current.removeAt(position)
+        _selectedDisplayCodes.value = current
+        saveDisplayCodes(current)
         rebuildSignalItems()
     }
 
     fun resetDisplayCodesToday() {
-        hiddenDisplayCodes.clear()
-        lastRemovedDisplayCode = null
-        saveHiddenDisplayCodes()
-        refreshDisplaySelection()
+        _selectedDisplayCodes.value = autoSelectedCodes()
+        saveDisplayCodes(_selectedDisplayCodes.value)
         rebuildSignalItems()
     }
 
     fun getProfitDisplay(code: String, currentPrice: Double): ProfitDisplay {
         val holding = holdings[code] ?: return ProfitDisplay("")
-        val profit = currentPrice - holding.buyPrice
+        val profit = ((currentPrice - holding.buyPrice) * holding.shares).roundToLong().toInt()
         return when {
-            profit > 0.0 -> ProfitDisplay("損益 +${formatCompact(profit)}", true)
-            profit < 0.0 -> ProfitDisplay("損益 ${formatCompact(profit)}", false)
-            else -> ProfitDisplay("損益 0", null)
+            profit > 0 -> ProfitDisplay("損益 +$profit  ${holding.shares}株", true)
+            profit < 0 -> ProfitDisplay("損益 $profit  ${holding.shares}株", false)
+            else -> ProfitDisplay("損益 0  ${holding.shares}株", null)
         }
     }
 
     fun getPriceVisual(code: String, currentPrice: Double): PriceVisual {
+        val prev = previousPriceMap[code]
         val start = startPriceMap[code] ?: currentPrice
-        val sameCount = samePriceCountMap[code] ?: 0
-        val trend = lastTrendMap[code] ?: 0
 
         val bgColor = when {
-            sameCount >= 3 -> R.color.skip_bg
-            trend > 0 -> R.color.sell_bg
-            trend < 0 -> R.color.buy_bg
+            prev == null -> R.color.skip_bg
+            currentPrice > prev -> R.color.sell_bg
+            currentPrice < prev -> R.color.buy_bg
             else -> R.color.skip_bg
         }
 
@@ -223,65 +217,91 @@ class TradeViewModel(application: Application) : AndroidViewModel(application) {
             is ServerMessage.Pong -> appendUserLog("PONG ${message.server_time.orEmpty()}")
             is ServerMessage.AckMessage -> appendUserLog("ACK ${(message.original_type ?: "register").ifBlank { "register" }}")
             is ServerMessage.ErrorMessage -> appendUserLog("ERROR ${message.message.orEmpty()}")
+            is ServerMessage.MasterMessage -> {
+                val symbols = message.symbols.orEmpty()
+                symbols.forEach { item ->
+                    val code = extractItemCode(item)
+                    if (code.isNotBlank()) {
+                        signalMap[code] = signalMap[code]?.mergeWith(item) ?: item
+                    }
+                }
+                if (_selectedDisplayCodes.value.isEmpty()) {
+                    _selectedDisplayCodes.value = autoSelectedCodes()
+                    saveDisplayCodes(_selectedDisplayCodes.value)
+                }
+                updateAvailableCodes()
+                rebuildSignalItems()
+            }
+            is ServerMessage.IndexSnapshot -> {
+                marketItem = message.index
+                rebuildSignalItems()
+            }
+            is ServerMessage.GetNowResponse -> {
+                marketItem = message.index ?: marketItem
+                message.symbols.orEmpty().forEach { item ->
+                    val code = extractItemCode(item)
+                    if (code.isNotBlank()) {
+                        signalMap[code] = signalMap[code]?.mergeWith(item) ?: item
+                    }
+                }
+                if (_selectedDisplayCodes.value.isEmpty()) {
+                    _selectedDisplayCodes.value = autoSelectedCodes()
+                    saveDisplayCodes(_selectedDisplayCodes.value)
+                }
+                updateAvailableCodes()
+                rebuildSignalItems()
+            }
+            is ServerMessage.SignalSymbolMessage -> {
+                val item = message.symbol
+                if (item != null) {
+                    val code = extractItemCode(item)
+                    if (code.isNotBlank()) {
+                        val merged = signalMap[code]?.mergeWith(item) ?: item
+                        val price = merged.price ?: merged.data?.price ?: 0.0
+                        if (!startPriceMap.containsKey(code)) {
+                            startPriceMap[code] = price
+                        }
+                        val oldPrice = signalMap[code]?.price ?: signalMap[code]?.data?.price ?: price
+                        previousPriceMap[code] = oldPrice
+                        signalMap[code] = merged
+                        if (_selectedDisplayCodes.value.isEmpty()) {
+                            _selectedDisplayCodes.value = autoSelectedCodes()
+                            saveDisplayCodes(_selectedDisplayCodes.value)
+                        }
+                        updateAvailableCodes()
+                        rebuildSignalItems()
+                    }
+                }
+            }
             is ServerMessage.SignalBatch -> {
-                marketItem = message.market
-                val symbols: List<SignalItem> = when {
+                marketItem = message.market ?: marketItem
+                val symbols = when {
                     !message.symbols.isNullOrEmpty() -> message.symbols
                     !message.items.isNullOrEmpty() -> message.items
                     else -> emptyList()
                 }
                 symbols.forEach { item ->
-                    updateSignalItem(item)
+                    val code = extractItemCode(item)
+                    if (code.isNotBlank()) {
+                        val merged = signalMap[code]?.mergeWith(item) ?: item
+                        val price = merged.price ?: merged.data?.price ?: 0.0
+                        if (!startPriceMap.containsKey(code)) {
+                            startPriceMap[code] = price
+                        }
+                        val oldPrice = signalMap[code]?.price ?: signalMap[code]?.data?.price ?: price
+                        previousPriceMap[code] = oldPrice
+                        signalMap[code] = merged
+                    }
+                }
+                if (_selectedDisplayCodes.value.isEmpty()) {
+                    _selectedDisplayCodes.value = autoSelectedCodes()
+                    saveDisplayCodes(_selectedDisplayCodes.value)
                 }
                 updateAvailableCodes()
-                refreshDisplaySelection()
                 rebuildSignalItems()
-            }
-            is ServerMessage.SignalSymbolMessage -> {
-                message.symbol?.let { item ->
-                    updateSignalItem(item)
-                    updateAvailableCodes()
-                    refreshDisplaySelection()
-                    rebuildSignalItems()
-                }
             }
             else -> appendUserLog(line)
         }
-    }
-
-    private fun updateSignalItem(item: SignalItem) {
-        val code = extractItemCode(item)
-        if (code.isBlank()) return
-        val price = item.price ?: item.data?.price ?: 0.0
-        if (!startPriceMap.containsKey(code)) {
-            startPriceMap[code] = price
-        }
-        val oldPrice = signalMap[code]?.price ?: signalMap[code]?.data?.price ?: price
-        previousPriceMap[code] = oldPrice
-
-        when {
-            price > oldPrice -> {
-                lastTrendMap[code] = 1
-                samePriceCountMap[code] = 0
-            }
-            price < oldPrice -> {
-                lastTrendMap[code] = -1
-                samePriceCountMap[code] = 0
-            }
-            else -> {
-                samePriceCountMap[code] = (samePriceCountMap[code] ?: 0) + 1
-                if (!lastTrendMap.containsKey(code)) lastTrendMap[code] = 0
-            }
-        }
-
-        signalMap[code] = item
-    }
-
-    private fun refreshDisplaySelection() {
-        val visibleCodes = signalMap.keys.filterNot { hiddenDisplayCodes.contains(it) }.take(17)
-        _selectedDisplayCodes.value = visibleCodes
-        _selectedDisplayLabels.value = visibleCodes.map { buildDisplayLabel(it) }
-        _canUndoDisplayRemoval.value = lastRemovedDisplayCode != null
     }
 
     private fun rebuildSignalItems() {
@@ -342,7 +362,7 @@ class TradeViewModel(application: Application) : AndroidViewModel(application) {
         }
         val price = item.price ?: item.data?.price ?: 0.0
         val name = item.name ?: item.data?.name ?: "名称未取得"
-        val score = item.score ?: item.signal_score ?: item.data?.signal_score ?: 0
+        val score = item.score?.toInt() ?: item.score_raw?.toInt() ?: item.signal_score ?: item.data?.signal_score ?: 0
         val reason = when (signalType) {
             "BUY" -> "ロング候補"
             "SELL" -> "ショート候補"
@@ -375,15 +395,81 @@ class TradeViewModel(application: Application) : AndroidViewModel(application) {
             .map { "${it.first} ${it.second}" }
     }
 
-    private fun buildDisplayLabel(code: String): String {
-        val item = signalMap[code]
-        val name = item?.name ?: item?.data?.name ?: ""
-        return if (name.isBlank()) code else "$code ${shortName(name)}"
+    private fun autoSelectedCodes(): List<String> {
+        return signalMap.values
+            .mapNotNull { item ->
+                val code = extractItemCode(item)
+                val name = item.name ?: item.data?.name ?: ""
+                if (code.isBlank()) null else code to name
+            }
+            .sortedBy { it.second }
+            .take(17)
+            .map { it.first }
     }
 
     private fun shortName(name: String): String = if (name.length <= 10) name else name.take(10) + "…"
-    private fun extractItemCode(item: SignalItem): String = item.code ?: item.data?.code ?: ""
-    private fun extractCode(label: String): String = label.substringBefore(" ").trim()
+    private fun extractItemCode(item: SignalItem): String = normalizeCode(item.code ?: item.data?.code ?: "")
+    private fun extractCode(label: String): String = normalizeCode(label.substringBefore(" ").trim())
+    private fun normalizeCode(raw: String): String = raw.trim().uppercase(Locale.ROOT)
+
+    private fun SignalItem.mergeWith(newer: SignalItem): SignalItem {
+        return copy(
+            type = newer.type ?: type,
+            sent_at = newer.sent_at ?: sent_at,
+            title = newer.title ?: title,
+            body = newer.body ?: body,
+            code = newer.code ?: code,
+            name = newer.name ?: name,
+            market = newer.market ?: market,
+            captured_at = newer.captured_at ?: captured_at,
+            price = newer.price ?: price,
+            change = newer.change ?: change,
+            change_value = newer.change_value ?: change_value,
+            change_rate = newer.change_rate ?: change_rate,
+            prev_close = newer.prev_close ?: prev_close,
+            price_time = newer.price_time ?: price_time,
+            signal_type = newer.signal_type ?: signal_type,
+            signal_score = newer.signal_score ?: signal_score,
+            market_bias = newer.market_bias ?: market_bias,
+            reason_short = newer.reason_short ?: reason_short,
+            reason_detail = newer.reason_detail ?: reason_detail,
+            vwap = newer.vwap ?: vwap,
+            board_over = newer.board_over ?: board_over,
+            board_under = newer.board_under ?: board_under,
+            best_bid_price = newer.best_bid_price ?: best_bid_price,
+            best_bid_size = newer.best_bid_size ?: best_bid_size,
+            best_bid_qty = newer.best_bid_qty ?: best_bid_qty,
+            best_ask_price = newer.best_ask_price ?: best_ask_price,
+            best_ask_size = newer.best_ask_size ?: best_ask_size,
+            best_ask_qty = newer.best_ask_qty ?: best_ask_qty,
+            nikkei_change_rate = newer.nikkei_change_rate ?: nikkei_change_rate,
+            volume = newer.volume ?: volume,
+            source = newer.source ?: source,
+            data = newer.data ?: data,
+            side = newer.side ?: side,
+            score = newer.score ?: score,
+            score_raw = newer.score_raw ?: score_raw,
+            tick = newer.tick ?: tick,
+            gap = newer.gap ?: gap,
+            pts_ratio = newer.pts_ratio ?: pts_ratio,
+            over = newer.over ?: over,
+            under = newer.under ?: under,
+            margin_sell = newer.margin_sell ?: margin_sell,
+            margin_buy = newer.margin_buy ?: margin_buy,
+            calendar_snippet = newer.calendar_snippet ?: calendar_snippet,
+            disclosure_flags = newer.disclosure_flags ?: disclosure_flags,
+            is_client_requested = newer.is_client_requested ?: is_client_requested,
+            is_index = newer.is_index ?: is_index,
+            is_earnings = newer.is_earnings ?: is_earnings,
+            earnings_type = newer.earnings_type ?: earnings_type,
+            category_tags = newer.category_tags ?: category_tags,
+            trade_date = newer.trade_date ?: trade_date,
+            priority_score = newer.priority_score ?: priority_score,
+            open_price = newer.open_price ?: open_price,
+            high_price = newer.high_price ?: high_price,
+            low_price = newer.low_price ?: low_price
+        )
+    }
 
     private fun rememberHistory(code: String, price: Double, updatedAt: String, reason: String, score: Int) {
         val list = historyMap.getOrPut(code) { mutableListOf() }
@@ -391,35 +477,25 @@ class TradeViewModel(application: Application) : AndroidViewModel(application) {
         while (list.size > 30) list.removeAt(0)
     }
 
-    private fun loadHiddenDisplayCodes() {
-        hiddenDisplayCodes.clear()
-        hiddenDisplayCodes.addAll(
-            prefs.getString("hidden_display_codes", "")
-                ?.split(",")
-                ?.map { it.trim() }
-                ?.filter { it.isNotBlank() }
-                .orEmpty()
-        )
+    private fun loadDisplayCodes(): List<String> {
+        rotateDayIfNeeded()
+        return prefs.getString("display_codes", "")
+            ?.split(",")
+            ?.map { it.trim() }
+            ?.filter { it.isNotBlank() }
+            ?: emptyList()
     }
 
-    private fun saveHiddenDisplayCodes() {
-        prefs.edit()
-            .putString("hidden_display_codes", hiddenDisplayCodes.joinToString(","))
-            .putString("display_codes_day", dayKeyFormat.format(Date()))
-            .apply()
+    private fun saveDisplayCodes(codes: List<String>) {
+        prefs.edit().putString("display_codes", codes.joinToString(",")).apply()
+        prefs.edit().putString("display_codes_day", dayKeyFormat.format(Date())).apply()
     }
 
     private fun rotateDayIfNeeded() {
         val today = dayKeyFormat.format(Date())
         val saved = prefs.getString("display_codes_day", "") ?: ""
         if (saved != today) {
-            prefs.edit()
-                .remove("hidden_display_codes")
-                .remove("display_codes")
-                .putString("display_codes_day", today)
-                .apply()
-            hiddenDisplayCodes.clear()
-            lastRemovedDisplayCode = null
+            prefs.edit().remove("display_codes").putString("display_codes_day", today).apply()
         }
     }
 
@@ -429,12 +505,12 @@ class TradeViewModel(application: Application) : AndroidViewModel(application) {
                 val code = k.removePrefix("holding_")
                 val raw = v?.toString().orEmpty()
                 val parts = raw.split("|")
-                val buyPrice = when {
-                    parts.size >= 2 -> parts[1].toDoubleOrNull() ?: 0.0
-                    else -> raw.toDoubleOrNull() ?: 0.0
-                }
-                if (buyPrice > 0.0) {
-                    holdings[code] = HoldingInfo(buyPrice = buyPrice)
+                if (parts.size == 2) {
+                    val shares = parts[0].toIntOrNull() ?: 0
+                    val buyPrice = parts[1].toDoubleOrNull() ?: 0.0
+                    if (shares > 0 && buyPrice > 0.0) {
+                        holdings[code] = HoldingInfo(shares, buyPrice)
+                    }
                 }
             }
         }
@@ -444,7 +520,7 @@ class TradeViewModel(application: Application) : AndroidViewModel(application) {
         val editor = prefs.edit()
         prefs.all.keys.filter { it.startsWith("holding_") }.forEach { editor.remove(it) }
         holdings.forEach { (code, info) ->
-            editor.putString("holding_$code", info.buyPrice.toString())
+            editor.putString("holding_$code", "${info.shares}|${info.buyPrice}")
         }
         editor.apply()
     }
@@ -488,7 +564,7 @@ class TradeViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun formatCompact(v: Double): String {
-        return if (v == v.toLong().toDouble()) v.toLong().toString() else "%.1f".format(Locale.US, v)
+        return if (v == v.toLong().toDouble()) v.toLong().toString() else "%.1f".format(v)
     }
 
     override fun onCleared() {

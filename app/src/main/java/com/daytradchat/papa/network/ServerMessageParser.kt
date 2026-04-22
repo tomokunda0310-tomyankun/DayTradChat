@@ -1,5 +1,5 @@
 //app/src/main/java/com/daytradchat/papa/network/ServerMessageParser.kt
-//ver 2.15-20
+//ver 2.16-22
 package com.daytradchat.papa.network
 
 import com.daytradchat.papa.model.ServerMessage
@@ -16,12 +16,14 @@ class ServerMessageParser {
             when (root.stringValue("type")) {
                 "server_hello" -> gson.fromJson(line, ServerMessage.ServerHello::class.java)
                 "pong" -> gson.fromJson(line, ServerMessage.Pong::class.java)
-                "ack", "register_ack" -> gson.fromJson(line, ServerMessage.AckMessage::class.java)
+                "ack", "register_ack", "add_codes_ack" -> gson.fromJson(line, ServerMessage.AckMessage::class.java)
                 "error" -> gson.fromJson(line, ServerMessage.ErrorMessage::class.java)
                 "master" -> gson.fromJson(line, ServerMessage.MasterMessage::class.java)
                 "watch_update_ack" -> gson.fromJson(line, ServerMessage.WatchUpdateAckMessage::class.java)
                 "signal_batch" -> gson.fromJson(line, ServerMessage.SignalBatch::class.java)
                 "signal_symbol" -> gson.fromJson(line, ServerMessage.SignalSymbolMessage::class.java)
+                "index_snapshot" -> gson.fromJson(line, ServerMessage.IndexSnapshot::class.java)
+                "get_now_response" -> gson.fromJson(line, ServerMessage.GetNowResponse::class.java)
                 else -> null
             }
         } catch (_: Exception) {

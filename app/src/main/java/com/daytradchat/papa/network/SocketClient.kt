@@ -1,7 +1,8 @@
 //app/src/main/java/com/daytradchat/papa/network/SocketClient.kt
-//ver 2.15-21
+//ver 2.16-22
 package com.daytradchat.papa.network
 
+import com.daytradchat.papa.model.AddCodesMessage
 import com.daytradchat.papa.model.GetNowMessage
 import com.daytradchat.papa.model.PingMessage
 import com.daytradchat.papa.model.RegisterMessage
@@ -91,9 +92,7 @@ class SocketClient(
 
                 onStatusChanged("未接続")
                 val delayMs = reconnectDelayMsProvider().coerceAtLeast(0L)
-                if (delayMs > 0L) {
-                    delay(delayMs)
-                }
+                if (delayMs > 0L) delay(delayMs)
             }
         }
     }
@@ -118,7 +117,6 @@ class SocketClient(
     fun sendRawLine(line: String) {
         val trimmed = line.trim()
         if (trimmed.isBlank()) return
-
         scope.launch {
             try {
                 val w = writer
@@ -136,15 +134,25 @@ class SocketClient(
         }
     }
 
+    fun sendAddCodes(codes: List<String>) {
+        val normalized = codes.map { it.trim().uppercase() }.filter { it.isNotBlank() }.distinct()
+        if (normalized.isEmpty()) {
+            onSystemLog("SEND_ADD_CODES_SKIP_EMPTY")
+            return
+        }
+        sendJson(gson.toJson(AddCodesMessage(codes = normalized)))
+    }
+
+    private fun sendJson(json: String) {
+        sendRawLine(json)
+    }
+
     private fun startPingLoop() {
         if (pingJob != null) return
         pingJob = scope.launch {
             while (isActive) {
                 delay(SocketConfig.PING_INTERVAL_MS)
-                try {
-                    sendJson(gson.toJson(PingMessage()))
-                } catch (_: Exception) {
-                }
+                sendJson(gson.toJson(PingMessage()))
             }
         }
     }
@@ -154,25 +162,10 @@ class SocketClient(
         pingJob = null
     }
 
-    private fun sendJson(json: String) {
-        val w = writer ?: return
-        w.write(json)
-        w.write("\n")
-        w.flush()
-        onSystemLog("SEND: $json")
-    }
-
     private fun closeSocket() {
-        try {
-            writer?.close()
-        } catch (_: Exception) {
-        }
+        try { writer?.close() } catch (_: Exception) {}
         writer = null
-
-        try {
-            socket?.close()
-        } catch (_: Exception) {
-        }
+        try { socket?.close() } catch (_: Exception) {}
         socket = null
     }
 }

@@ -1,5 +1,5 @@
 //app/src/main/java/com/daytradchat/papa/ui/SettingsFragment.kt
-//ver 2.16-14
+//ver 2.16-23
 package com.daytradchat.papa.ui
 
 import android.os.Bundle
@@ -29,7 +29,7 @@ class SettingsFragment : Fragment() {
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        binding.textVersion.text = "ver 2.16-14"
+        binding.textVersion.text = "ver 2.16-23"
         binding.textPortInline.text = "port: ${SocketConfig.SERVER_PORT}"
 
         codeAdapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, mutableListOf<String>())
@@ -56,13 +56,13 @@ class SettingsFragment : Fragment() {
 
         binding.buttonSendWatch.setOnClickListener {
             val inputText = binding.editSendCode.text?.toString().orEmpty().trim()
-            viewModel.sendWatchCommand(inputText)
+            viewModel.sendWatchCommand("", inputText)
         }
 
         binding.buttonApplyHolding.setOnClickListener {
             val codeLabel = binding.spinnerHoldingCode.selectedItem?.toString().orEmpty()
             val buyPrice = binding.editBuyPrice.text?.toString().orEmpty().trim()
-            viewModel.applyHolding(codeLabel, buyPrice)
+            viewModel.applyHolding(codeLabel, 100, buyPrice)
         }
 
         viewLifecycleOwner.lifecycleScope.launch {
@@ -87,7 +87,7 @@ class SettingsFragment : Fragment() {
                 launch {
                     viewModel.availableCodes.collect { labels ->
                         codeAdapter.clear()
-                        codeAdapter.addAll(labels.toList())
+                        codeAdapter.addAll(labels)
                         codeAdapter.notifyDataSetChanged()
                     }
                 }

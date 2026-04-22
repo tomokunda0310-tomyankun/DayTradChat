@@ -1,5 +1,5 @@
 //app/src/main/java/com/daytradchat/papa/ui/SystemLogFragment.kt
-//ver 2.13-00
+//ver 2.16-22
 package com.daytradchat.papa.ui
 
 import android.os.Bundle
@@ -36,7 +36,9 @@ class SystemLogFragment : Fragment() {
 
         binding.recyclerLogs.addOnScrollListener(object : RecyclerView.OnScrollListener() {
             override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
-                stickToTop = layoutManager.findFirstCompletelyVisibleItemPosition() <= 0
+                val first = layoutManager.findFirstVisibleItemPosition()
+                val firstView = layoutManager.findViewByPosition(first)
+                stickToTop = first <= 0 && (firstView?.top ?: 0) >= 0
             }
         })
 

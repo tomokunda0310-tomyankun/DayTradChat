@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- ver 2.15-01 -->
+<!-- ver 2.16-29 -->
 <!-- app/src/main/res/values/colors.xml -->
 <resources>
     <color name="colorPrimary">#184B9B</color>
@@ -8,7 +8,7 @@
     <color name="bg_app">#101010</color>
     <color name="bg_surface">#1D1D1D</color>
     <color name="bg_panel">#262626</color>
-    <color name="text_primary">#F1F1F1</color>
+    <color name="text_primary">#4E4E4E</color>
     <color name="text_secondary">#C7C7C7</color>
     <color name="buy_bg">#D9F5DF</color>
     <color name="sell_bg">#F9DEDC</color>

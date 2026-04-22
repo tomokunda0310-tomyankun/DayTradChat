@@ -1,5 +1,5 @@
 //app/src/main/java/com/daytradchat/papa/network/SocketConfig.kt
-//ver 2.13-00
+//ver 2.16-21
 package com.daytradchat.papa.network
 
 object SocketConfig {
