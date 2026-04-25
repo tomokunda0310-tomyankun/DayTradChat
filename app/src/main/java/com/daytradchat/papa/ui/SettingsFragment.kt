@@ -1,11 +1,12 @@
 //app/src/main/java/com/daytradchat/papa/ui/SettingsFragment.kt
-//ver 2.13-00
+//ver 2.16-10
 package com.daytradchat.papa.ui
 
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ArrayAdapter
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.Lifecycle
@@ -19,6 +20,9 @@ class SettingsFragment : Fragment() {
     private var _binding: FragmentSettingsBinding? = null
     private val binding get() = _binding!!
     private val viewModel: TradeViewModel by activityViewModels()
+    private lateinit var codeAdapter: ArrayAdapter<String>
+    private lateinit var reconnectAdapter: ArrayAdapter<String>
+    private lateinit var shareAdapter: ArrayAdapter<String>
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentSettingsBinding.inflate(inflater, container, false)
@@ -26,36 +30,77 @@ class SettingsFragment : Fragment() {
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        binding.textPort.text = "Port: ${SocketConfig.SERVER_PORT}"
+        binding.textVersion.text = "ver 2.16-10"
+        binding.textPortInline.text = "port: ${SocketConfig.SERVER_PORT}"
+
+        codeAdapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, mutableListOf<String>())
+        codeAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        binding.spinnerTargetCode.adapter = codeAdapter
+        binding.spinnerHoldingCode.adapter = codeAdapter
+
+        reconnectAdapter = ArrayAdapter(
+            requireContext(),
+            android.R.layout.simple_spinner_item,
+            (1..10).map { it.toString() }.toMutableList()
+        )
+        reconnectAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        binding.spinnerReconnectSec.adapter = reconnectAdapter
+
+        shareAdapter = ArrayAdapter(
+            requireContext(),
+            android.R.layout.simple_spinner_item,
+            (1..10).map { (it * 100).toString() }.toMutableList()
+        )
+        shareAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        binding.spinnerHoldingShares.adapter = shareAdapter
 
         binding.buttonSaveReconnect.setOnClickListener {
-            viewModel.saveSettingsAndReconnect(
-                binding.editHost.text?.toString().orEmpty(),
-                binding.editReconnectSec.text?.toString().orEmpty()
-            )
+            val host = binding.editHostInline.text?.toString().orEmpty().trim()
+            val sec = binding.spinnerReconnectSec.selectedItem?.toString().orEmpty()
+            viewModel.saveSettingsAndReconnect(host, sec)
         }
 
         binding.buttonReset.setOnClickListener {
             viewModel.resetSettingsAndReconnect()
         }
 
+        binding.buttonSendWatch.setOnClickListener {
+            val targetLabel = binding.spinnerTargetCode.selectedItem?.toString().orEmpty()
+            val inputText = binding.editSendCode.text?.toString().orEmpty().trim()
+            viewModel.sendWatchCommand(targetLabel, inputText)
+        }
+
+        binding.buttonApplyHolding.setOnClickListener {
+            val codeLabel = binding.spinnerHoldingCode.selectedItem?.toString().orEmpty()
+            val shares = binding.spinnerHoldingShares.selectedItem?.toString().orEmpty().toIntOrNull() ?: 0
+            val buyPrice = binding.editBuyPrice.text?.toString().orEmpty().trim()
+            viewModel.applyHolding(codeLabel, shares, buyPrice)
+        }
+
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch {
-                    viewModel.currentHost.collect {
-                        if (binding.editHost.text?.toString() != it) {
-                            binding.editHost.setText(it)
-                            binding.editHost.setSelection(it.length)
+                    viewModel.currentHost.collect { host ->
+                        val current = binding.editHostInline.text?.toString().orEmpty()
+                        if (current != host) {
+                            binding.editHostInline.setText(host)
+                            binding.editHostInline.setSelection(host.length)
                         }
                     }
                 }
                 launch {
-                    viewModel.reconnectSec.collect {
-                        val text = it.toString()
-                        if (binding.editReconnectSec.text?.toString() != text) {
-                            binding.editReconnectSec.setText(text)
-                            binding.editReconnectSec.setSelection(text.length)
+                    viewModel.reconnectSec.collect { sec ->
+                        val index = sec.coerceIn(1, 10) - 1
+                        if (binding.spinnerReconnectSec.selectedItemPosition != index) {
+                            binding.spinnerReconnectSec.setSelection(index)
                         }
+                    }
+                }
+                launch {
+                    viewModel.availableCodes.collect { labels ->
+                        codeAdapter.clear()
+                        codeAdapter.addAll(labels)
+                        codeAdapter.notifyDataSetChanged()
                     }
                 }
             }

@@ -1,5 +1,5 @@
 //app/src/main/java/com/daytradchat/papa/network/SocketClient.kt
-//ver 2.13-00
+//ver 2.15-21
 package com.daytradchat.papa.network
 
 import com.daytradchat.papa.model.GetNowMessage
@@ -115,6 +115,27 @@ class SocketClient(
         }
     }
 
+    fun sendRawLine(line: String) {
+        val trimmed = line.trim()
+        if (trimmed.isBlank()) return
+
+        scope.launch {
+            try {
+                val w = writer
+                if (w == null) {
+                    onSystemLog("SEND_SKIP_NOT_CONNECTED: $trimmed")
+                    return@launch
+                }
+                w.write(trimmed)
+                w.write("\n")
+                w.flush()
+                onSystemLog("SEND: $trimmed")
+            } catch (e: Exception) {
+                onSystemLog("SEND_ERROR: ${e.message ?: "unknown"}")
+            }
+        }
+    }
+
     private fun startPingLoop() {
         if (pingJob != null) return
         pingJob = scope.launch {
@@ -142,9 +163,16 @@ class SocketClient(
     }
 
     private fun closeSocket() {
-        try { writer?.close() } catch (_: Exception) {}
+        try {
+            writer?.close()
+        } catch (_: Exception) {
+        }
         writer = null
-        try { socket?.close() } catch (_: Exception) {}
+
+        try {
+            socket?.close()
+        } catch (_: Exception) {
+        }
         socket = null
     }
 }
