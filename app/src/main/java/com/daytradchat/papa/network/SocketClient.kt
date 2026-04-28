@@ -37,14 +37,10 @@ object SocketClient {
 
     fun send(message: String) {
         try {
-            if (webSocket == null) {
-                Log.e("SocketClient", "socket is null")
-                return
-            }
             webSocket?.send(message)
-
         } catch (e: Exception) {
-            Log.e("SocketClient", "send failed", e)
+            Log.e("SocketClient", "Send Error", e)
         }
     }
+
 }

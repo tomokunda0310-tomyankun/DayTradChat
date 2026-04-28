@@ -15,6 +15,9 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.daytradchat.papa.databinding.FragmentSettingsBinding
 import com.daytradchat.papa.network.SocketConfig
 import kotlinx.coroutines.launch
+import android.widget.Button
+import android.widget.EditText
+import com.daytradchat.papa.R
 
 class SettingsFragment : Fragment() {
     private var _binding: FragmentSettingsBinding? = null
@@ -29,7 +32,18 @@ class SettingsFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        binding.textVersion.text = "ver 2.17-09"
+        val editCode = view.findViewById<EditText>(R.id.editCode)
+        val btnSend = view.findViewById<Button>(R.id.btnSend)
+
+        btnSend?.setOnClickListener {
+            val code = editCode?.text?.toString()?.trim() ?: ""
+            if (code.isNotEmpty()) {
+                viewModel.sendAddCodes(listOf(code))
+                editCode?.setText("")
+            }
+        }
+		
+        binding.textVersion.text = "ver 2.17-41"
 
         val editCode = view.findViewById<EditText>(R.id.editCode)
         val btnSend = view.findViewById<Button>(R.id.btnSend)

@@ -1,5 +1,5 @@
 //app/src/main/java/com/daytradchat/papa/ui/TradeViewModel.kt
-//ver 2.17-40
+//ver 2.17-41
 package com.daytradchat.papa.ui
 
 import android.app.Application
@@ -11,6 +11,9 @@ import com.daytradchat.papa.network.*
 import kotlinx.coroutines.flow.*
 import java.text.SimpleDateFormat
 import java.util.*
+import android.util.Log
+import org.json.JSONArray
+import org.json.JSONObject
 
 data class ProfitDisplay(val text: String, val isPositive: Boolean? = null)
 data class PriceVisual(val bgColorRes: Int, val codeNameColorRes: Int)
@@ -295,4 +298,28 @@ class TradeViewModel(application: Application) : AndroidViewModel(application) {
             Log.e("SEND_CODE", "send error", e)
         }
     }
+	
+	fun sendAddCodes(codes: List<String>) {
+        if (codes.isEmpty()) return
+        val client = socketClient ?: run {
+            Log.e("TradeViewModel", "SocketClient is null")
+            return
+        }
+
+        try {
+            val json = JSONObject().apply {
+                put("type", "add_codes")
+                val jsonArray = JSONArray()
+                codes.forEach { code: String ->
+                    jsonArray.put(code)
+                }
+                put("codes", jsonArray)
+            }
+            client.send(json.toString())
+            Log.d("Socket", "SENT: $json")
+        } catch (e: Exception) {
+            Log.e("Socket", "sendAddCodes Error", e)
+        }
+    }
+
 }
