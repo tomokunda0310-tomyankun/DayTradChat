@@ -1,4 +1,5 @@
-// app/src/main/java/com/daytradchat/papa/ui/SettingsFragment.kt
+//app/src/main/java/com/daytradchat/papa/ui/SettingsFragment.kt
+//ver 2.17-40
 package com.daytradchat.papa.ui
 
 import android.os.Bundle
@@ -30,6 +31,14 @@ class SettingsFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         binding.textVersion.text = "ver 2.17-09"
 
+        val editCode = view.findViewById<EditText>(R.id.editCode)
+        val btnSend = view.findViewById<Button>(R.id.btnSend)
+
+        btnSend.setOnClickListener {
+            val code = editCode.text.toString()
+            viewModel.sendAddCode(code)
+        }
+		
         codeAdapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, mutableListOf<String>())
         binding.spinnerHoldingCode.adapter = codeAdapter
 

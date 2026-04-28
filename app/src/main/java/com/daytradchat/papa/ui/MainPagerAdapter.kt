@@ -1,4 +1,5 @@
-// app/src/main/java/com/daytradchat/papa/ui/MainPagerAdapter.kt
+//app/src/main/java/com/daytradchat/papa/ui/MainPagerAdapter.kt
+//ver 2.17-30
 package com.daytradchat.papa.ui
 
 import androidx.fragment.app.Fragment

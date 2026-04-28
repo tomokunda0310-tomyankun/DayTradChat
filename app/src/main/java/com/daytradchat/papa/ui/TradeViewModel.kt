@@ -1,4 +1,5 @@
-// app/src/main/java/com/daytradchat/papa/ui/TradeViewModel.kt
+//app/src/main/java/com/daytradchat/papa/ui/TradeViewModel.kt
+//ver 2.17-40
 package com.daytradchat.papa.ui
 
 import android.app.Application
@@ -267,4 +268,31 @@ class TradeViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun buildHistoryDialogText(code: String): String = "履歴データなし: $code"
+
+    fun sendAddCode(code: String?) {
+
+        if (code.isNullOrBlank()) {
+            Log.e("SEND_CODE", "code is null or blank")
+            return
+        }
+
+        if (code.length != 4) {
+            Log.e("SEND_CODE", "invalid code length: $code")
+            return
+        }
+
+        try {
+            val json = JSONObject().apply {
+                put("type", "add_codes")
+                put("codes", JSONArray().put(code))
+            }
+
+            Log.d("SEND_CODE", json.toString())
+
+            SocketClient.send(json.toString())
+
+        } catch (e: Exception) {
+            Log.e("SEND_CODE", "send error", e)
+        }
+    }
 }

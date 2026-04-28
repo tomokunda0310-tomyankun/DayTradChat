@@ -1,4 +1,4 @@
-// app/src/main/java/com/daytradchat/papa/ui/BoardFragment.kt
+//app/src/main/java/com/daytradchat/papa/ui/BoardFragment.kt
 //ver 2.17-00
 package com.daytradchat.papa.ui
 

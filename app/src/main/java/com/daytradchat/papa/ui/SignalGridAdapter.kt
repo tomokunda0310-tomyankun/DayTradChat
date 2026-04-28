@@ -1,4 +1,5 @@
-// app/src/main/java/com/daytradchat/papa/ui/SignalGridAdapter.kt
+//app/src/main/java/com/daytradchat/papa/ui/SignalGridAdapter.kt
+//ver 2.17-30
 package com.daytradchat.papa.ui
 
 import android.util.TypedValue

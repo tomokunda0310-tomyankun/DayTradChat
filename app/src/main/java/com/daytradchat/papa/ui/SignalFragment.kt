@@ -1,4 +1,5 @@
-// app/src/main/java/com/daytradchat/papa/ui/SignalFragment.kt
+//app/src/main/java/com/daytradchat/papa/ui/SignalFragment.kt
+//ver 2.17-30
 package com.daytradchat.papa.ui
 
 import android.app.AlertDialog

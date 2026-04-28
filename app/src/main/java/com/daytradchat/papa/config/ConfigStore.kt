@@ -1,4 +1,4 @@
-// /app/src/main/java/com/daytradchat/papa/config/ConfigStore.kt
+//app/src/main/java/com/daytradchat/papa/config/ConfigStore.kt
 // ver 1.00-00
 package com.daytradchat.papa.config
 
