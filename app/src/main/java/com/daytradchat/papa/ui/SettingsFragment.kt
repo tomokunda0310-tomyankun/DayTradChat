@@ -1,5 +1,4 @@
-//app/src/main/java/com/daytradchat/papa/ui/SettingsFragment.kt
-//ver 2.16-23
+// app/src/main/java/com/daytradchat/papa/ui/SettingsFragment.kt
 package com.daytradchat.papa.ui
 
 import android.os.Bundle
@@ -21,7 +20,6 @@ class SettingsFragment : Fragment() {
     private val binding get() = _binding!!
     private val viewModel: TradeViewModel by activityViewModels()
     private lateinit var codeAdapter: ArrayAdapter<String>
-    private lateinit var reconnectAdapter: ArrayAdapter<String>
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentSettingsBinding.inflate(inflater, container, false)
@@ -29,20 +27,11 @@ class SettingsFragment : Fragment() {
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        binding.textVersion.text = "ver 2.16-23"
-        binding.textPortInline.text = "port: ${SocketConfig.SERVER_PORT}"
+        super.onViewCreated(view, savedInstanceState)
+        binding.textVersion.text = "ver 2.17-09"
 
         codeAdapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, mutableListOf<String>())
-        codeAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         binding.spinnerHoldingCode.adapter = codeAdapter
-
-        reconnectAdapter = ArrayAdapter(
-            requireContext(),
-            android.R.layout.simple_spinner_item,
-            (1..10).map { it.toString() }.toMutableList()
-        )
-        reconnectAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-        binding.spinnerReconnectSec.adapter = reconnectAdapter
 
         binding.buttonSaveReconnect.setOnClickListener {
             val host = binding.editHostInline.text?.toString().orEmpty().trim()
@@ -56,41 +45,23 @@ class SettingsFragment : Fragment() {
 
         binding.buttonSendWatch.setOnClickListener {
             val inputText = binding.editSendCode.text?.toString().orEmpty().trim()
-            viewModel.sendWatchCommand("", inputText)
+            viewModel.sendWatchCommand(inputText)
         }
 
         binding.buttonApplyHolding.setOnClickListener {
             val codeLabel = binding.spinnerHoldingCode.selectedItem?.toString().orEmpty()
             val buyPrice = binding.editBuyPrice.text?.toString().orEmpty().trim()
-            viewModel.applyHolding(codeLabel, 100, buyPrice)
+            viewModel.applyHolding(codeLabel, buyPrice)
         }
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                launch {
-                    viewModel.currentHost.collect { host ->
-                        val current = binding.editHostInline.text?.toString().orEmpty()
-                        if (current != host) {
-                            binding.editHostInline.setText(host)
-                            binding.editHostInline.setSelection(host.length)
-                        }
-                    }
-                }
-                launch {
-                    viewModel.reconnectSec.collect { sec ->
-                        val index = sec.coerceIn(1, 10) - 1
-                        if (binding.spinnerReconnectSec.selectedItemPosition != index) {
-                            binding.spinnerReconnectSec.setSelection(index)
-                        }
-                    }
-                }
-                launch {
-                    viewModel.availableCodes.collect { labels ->
-                        codeAdapter.clear()
-                        codeAdapter.addAll(labels)
-                        codeAdapter.notifyDataSetChanged()
-                    }
-                }
+                launch { viewModel.currentHost.collect { host -> binding.editHostInline.setText(host) } }
+                launch { viewModel.availableCodes.collect { labels -> 
+                    codeAdapter.clear()
+                    codeAdapter.addAll(labels)
+                    codeAdapter.notifyDataSetChanged()
+                }}
             }
         }
     }

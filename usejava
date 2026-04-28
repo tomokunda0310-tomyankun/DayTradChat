@@ -1,0 +1,20 @@
+#!/bin/bash
+
+case $1 in
+  17)
+    export JAVA_HOME=/opt/java/jdk-17.0.18+8
+    ;;
+  21)
+    export JAVA_HOME=/opt/java/jdk-21.0.10+7
+    ;;
+  8)
+    export JAVA_HOME=/opt/java/jdk1.8.0_212
+    ;;
+  *)
+    echo "Usage: usejava {8|17|21}"
+    return
+    ;;
+esac
+
+export PATH=$JAVA_HOME/bin:$PATH
+java -version

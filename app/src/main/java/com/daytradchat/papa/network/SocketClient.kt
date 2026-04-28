@@ -1,19 +1,11 @@
-//app/src/main/java/com/daytradchat/papa/network/SocketClient.kt
-//ver 2.16-22
+// app/src/main/java/com/daytradchat/papa/network/SocketClient.kt
 package com.daytradchat.papa.network
 
-import com.daytradchat.papa.model.AddCodesMessage
 import com.daytradchat.papa.model.GetNowMessage
 import com.daytradchat.papa.model.PingMessage
 import com.daytradchat.papa.model.RegisterMessage
 import com.google.gson.Gson
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.*
 import java.io.BufferedWriter
 import java.io.InputStreamReader
 import java.io.OutputStreamWriter
@@ -52,7 +44,7 @@ class SocketClient(
                     val s = Socket()
                     s.connect(
                         InetSocketAddress(host, SocketConfig.SERVER_PORT),
-                        SocketConfig.CONNECT_TIMEOUT_MS
+                        3000 // タイムアウト
                     )
                     socket = s
                     writer = BufferedWriter(OutputStreamWriter(s.getOutputStream(), Charsets.UTF_8))
@@ -63,7 +55,7 @@ class SocketClient(
                     startPingLoop()
 
                     val reader = InputStreamReader(s.getInputStream(), Charsets.UTF_8)
-                    val buf = CharArray(1024)
+                    val buf = CharArray(2048)
                     val sb = StringBuilder()
 
                     while (isActive && !s.isClosed) {
@@ -81,18 +73,16 @@ class SocketClient(
                             }
                         }
                     }
-
-                    onSystemLog("DISCONNECTED_BY_REMOTE_OR_EOF")
+                    onSystemLog("切断されました")
                 } catch (e: Exception) {
-                    onSystemLog("SOCKET_ERROR: ${e.message ?: "unknown"}")
+                    onSystemLog("接続エラー: ${e.message}")
                 } finally {
                     stopPingLoop()
                     closeSocket()
                 }
 
-                onStatusChanged("未接続")
-                val delayMs = reconnectDelayMsProvider().coerceAtLeast(0L)
-                if (delayMs > 0L) delay(delayMs)
+                onStatusChanged("再接続待機")
+                delay(reconnectDelayMsProvider().coerceAtLeast(1000L))
             }
         }
     }
@@ -100,18 +90,16 @@ class SocketClient(
     fun restart() {
         stopAsync()
         scope.launch {
-            delay(100L)
+            delay(500L)
             start()
         }
     }
 
     fun stopAsync() {
-        scope.launch {
-            stopPingLoop()
-            closeSocket()
-            connectionJob?.cancel()
-            connectionJob = null
-        }
+        connectionJob?.cancel()
+        connectionJob = null
+        stopPingLoop()
+        closeSocket()
     }
 
     fun sendRawLine(line: String) {
@@ -119,40 +107,26 @@ class SocketClient(
         if (trimmed.isBlank()) return
         scope.launch {
             try {
-                val w = writer
-                if (w == null) {
-                    onSystemLog("SEND_SKIP_NOT_CONNECTED: $trimmed")
-                    return@launch
+                writer?.let {
+                    it.write(trimmed)
+                    it.write("\n")
+                    it.flush()
+                    onSystemLog("SEND: $trimmed")
                 }
-                w.write(trimmed)
-                w.write("\n")
-                w.flush()
-                onSystemLog("SEND: $trimmed")
             } catch (e: Exception) {
-                onSystemLog("SEND_ERROR: ${e.message ?: "unknown"}")
+                onSystemLog("送信エラー: ${e.message}")
             }
         }
     }
 
-    fun sendAddCodes(codes: List<String>) {
-        val normalized = codes.map { it.trim().uppercase() }.filter { it.isNotBlank() }.distinct()
-        if (normalized.isEmpty()) {
-            onSystemLog("SEND_ADD_CODES_SKIP_EMPTY")
-            return
-        }
-        sendJson(gson.toJson(AddCodesMessage(codes = normalized)))
-    }
-
-    private fun sendJson(json: String) {
-        sendRawLine(json)
-    }
-
     private fun startPingLoop() {
-        if (pingJob != null) return
+        pingJob?.cancel()
         pingJob = scope.launch {
             while (isActive) {
-                delay(SocketConfig.PING_INTERVAL_MS)
-                sendJson(gson.toJson(PingMessage()))
+                delay(30000L) // 30秒ごとにPing
+                try {
+                    sendJson(gson.toJson(PingMessage()))
+                } catch (_: Exception) { }
             }
         }
     }
@@ -160,6 +134,14 @@ class SocketClient(
     private fun stopPingLoop() {
         pingJob?.cancel()
         pingJob = null
+    }
+
+    private fun sendJson(json: String) {
+        writer?.let {
+            it.write(json)
+            it.write("\n")
+            it.flush()
+        }
     }
 
     private fun closeSocket() {

@@ -16,7 +16,8 @@ import com.daytradchat.papa.ui.MainPagerAdapter
 import com.daytradchat.papa.ui.TradeViewModel
 import com.google.android.material.tabs.TabLayoutMediator
 import kotlinx.coroutines.launch
-
+// app/src/main/java/com/daytradchat/papa/MainActivity.kt
+// ver 2.17-22
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private val viewModel: TradeViewModel by viewModels()
@@ -27,7 +28,9 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         binding.viewPager.adapter = MainPagerAdapter(this)
-        val titles = listOf("シグナル", "ログ", "設定1", "設定2", "システム")
+        // タブ名を「ロング」「ショート」に変更
+        val titles = listOf("ロング", "ショート", "ログ", "設定", "システム")
+        
         TabLayoutMediator(binding.tabLayout, binding.viewPager) { tab, position ->
             val title = titles[position]
             tab.customView = TextView(this).apply {
@@ -36,15 +39,13 @@ class MainActivity : AppCompatActivity() {
                 setTextSize(
                     TypedValue.COMPLEX_UNIT_SP,
                     when (title) {
-                        "シグナル", "システム" -> 6.5f
-                        else -> 7f
+                        "ロング", "ショート", "システム" -> 6.5f
+                        else -> 7.5f
                     }
                 )
                 setSingleLine(true)
                 includeFontPadding = false
-                minHeight = 0
-                minimumHeight = 0
-                setPadding(1, 0, 1, 0)
+                setPadding(2, 0, 2, 0)
             }
         }.attach()
 

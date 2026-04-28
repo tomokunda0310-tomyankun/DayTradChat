@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- ver 2.16-29 -->
-<!-- app/src/main/res/values/colors.xml -->
+<!-- ver 2.17-29 -->
 <resources>
     <color name="colorPrimary">#184B9B</color>
     <color name="colorPrimaryDark">#0F2A55</color>
@@ -10,12 +9,14 @@
     <color name="bg_panel">#262626</color>
     <color name="text_primary">#4E4E4E</color>
     <color name="text_secondary">#C7C7C7</color>
-    <color name="buy_bg">#D9F5DF</color>
+
+    <color name="profit_plus">#B00020</color>
+    <color name="profit_minus">#1565C0</color>
+    <color name="index_bg">#D9E8FF</color>
+    <color name="index_text">#184B9B</color>
+
+    <color name="text_black">#E0E0E0</color> 
+    <color name="text_deep_red">#FF5252</color>   <color name="text_deep_green">#69F0AE</color> <color name="bg_default_gray">#262626</color> <color name="bg_light_red">#442C2C</color>    <color name="bg_light_green">#2C442C</color>  <color name="bg_rebound_red">#662222</color>  <color name="bg_rebound_green">#226622</color> <color name="buy_bg">#D9F5DF</color>
     <color name="sell_bg">#F9DEDC</color>
     <color name="skip_bg">#E6E6E6</color>
-    <color name="index_bg">#D9E8FF</color>
-    <color name="buy_text">#165A24</color>
-    <color name="sell_text">#8D1F1F</color>
-    <color name="skip_text">#555555</color>
-    <color name="index_text">#184B9B</color>
 </resources>

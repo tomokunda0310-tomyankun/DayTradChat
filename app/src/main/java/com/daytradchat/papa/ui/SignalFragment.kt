@@ -1,5 +1,4 @@
-//app/src/main/java/com/daytradchat/papa/ui/SignalFragment.kt
-//ver 2.16-10
+// app/src/main/java/com/daytradchat/papa/ui/SignalFragment.kt
 package com.daytradchat.papa.ui
 
 import android.app.AlertDialog
@@ -25,11 +24,24 @@ class SignalFragment : Fragment() {
     private val binding get() = _binding!!
     private val viewModel: TradeViewModel by activityViewModels()
 
-    private val adapter = SignalGridAdapter(
-        onItemClick = { item -> showHistoryDialog(item) },
-        profitProvider = { code, price -> viewModel.getProfitDisplay(code, price) },
-        priceVisualProvider = { code, price -> viewModel.getPriceVisual(code, price) }
-    )
+    companion object {
+        private const val ARG_TYPE = "signal_type"
+        fun newInstance(type: String): SignalFragment {
+            val fragment = SignalFragment()
+            val args = Bundle()
+            args.putString(ARG_TYPE, type)
+            fragment.arguments = args
+            return fragment
+        }
+    }
+
+    private val adapter by lazy {
+        SignalGridAdapter(
+            onItemClick = { item: SignalCardUiModel -> showHistoryDialog(item) },
+            profitProvider = { code: String, price: Double -> viewModel.getProfitDisplay(code, price) },
+            priceVisualProvider = { code: String, price: Double -> viewModel.getPriceVisual(code, price) }
+        )
+    }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentSignalBinding.inflate(inflater, container, false)
@@ -37,13 +49,18 @@ class SignalFragment : Fragment() {
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
         binding.recyclerSignals.layoutManager = GridLayoutManager(requireContext(), 3)
         binding.recyclerSignals.adapter = adapter
 
+        val type = arguments?.getString(ARG_TYPE) ?: "LONG"
+
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.signalItems.collect { list ->
-                    adapter.submitList(list)
+                if (type == "LONG") {
+                    viewModel.symbolsLong.collect { list -> adapter.submitList(list) }
+                } else {
+                    viewModel.symbolsShort.collect { list -> adapter.submitList(list) }
                 }
             }
         }
@@ -57,7 +74,6 @@ class SignalFragment : Fragment() {
             typeface = Typeface.MONOSPACE
             movementMethod = ScrollingMovementMethod()
         }
-
         AlertDialog.Builder(requireContext())
             .setTitle("${item.code} ${item.name}")
             .setView(textView)
