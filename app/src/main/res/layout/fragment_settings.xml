@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- ver 2.17-44 -->
-<!-- app/src/main/res/layout/fragment_settings.xml -->
+<!-- ver 2.17-45 -->
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -16,10 +15,11 @@
             android:id="@+id/textVersion"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="ver 2.17-41"
+            android:text="ver 2.17-45"
             android:textSize="10sp"
             android:textStyle="bold" />
 
+        <!-- ホスト + ポート -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="40dp"
@@ -43,20 +43,16 @@
 
             <EditText
                 android:id="@+id/editPort"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:hint="ポート番号 (例: 5001)"
-                android:inputType="number" />
-
-            <TextView
-                android:id="@+id/textPortInline"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
+                android:layout_width="60dp"
+                android:layout_height="36dp"
                 android:layout_marginStart="6dp"
-                android:text="port: 5001"
+                android:hint="5001"
+                android:inputType="number"
+                android:padding="6dp"
                 android:textSize="10sp" />
         </LinearLayout>
 
+        <!-- 再接続設定 -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="44dp"
@@ -100,9 +96,10 @@
                 android:maxLines="1"
                 android:text="初期値に戻す"
                 android:textSize="9sp" />
+        </LinearLayout>
 
-            </LinearLayout>
-                <LinearLayout
+        <!-- 銘柄コード送信 -->
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="44dp"
             android:layout_marginTop="6dp"
@@ -111,14 +108,15 @@
 
             <EditText
                 android:id="@+id/editCode"
-                android:layout_width="match_parent"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
+                android:layout_weight="1"
                 android:hint="銘柄コード"
                 android:inputType="number" />
 
             <Button
                 android:id="@+id/btnSend"
-                android:layout_width="match_parent"
+                android:layout_width="96dp"
                 android:layout_height="wrap_content"
                 android:text="送信" />
         </LinearLayout>
@@ -150,6 +148,7 @@
             android:text="送信"
             android:textSize="10sp" />
 
+        <!-- 保有管理 -->
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -190,6 +189,6 @@
                 android:text="投入 / 終了"
                 android:textSize="10sp" />
         </LinearLayout>
+
     </LinearLayout>
 </ScrollView>
-
