@@ -1,11 +1,12 @@
 //app/src/main/java/com/daytradchat/papa/config/ConfigStore.kt
-// ver 1.00-00
+//ver 2.17-45
 package com.daytradchat.papa.config
 
 import android.content.Context
 import android.util.Base64
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import org.json.JSONObject
 import java.nio.charset.StandardCharsets
 import java.security.KeyStore
@@ -17,28 +18,46 @@ import javax.crypto.spec.GCMParameterSpec
 class ConfigStore(context: Context) {
 
     private val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
-    private val _hostFlow = MutableStateFlow(loadHost())
-    val hostFlow: StateFlow<String> = _hostFlow
+    
+    // 初期値を loadConnectionSettings から取得
+    private val _hostFlow = MutableStateFlow(loadConnectionSettings().first)
+    val hostFlow: StateFlow<String> = _hostFlow.asStateFlow()
 
-    suspend fun saveHost(host: String) {
-        val json = JSONObject().put("host", host).toString()
+    // 接続設定の保存
+    fun saveConnectionSettings(host: String, port: String) {
+        val json = JSONObject().put("host", host).put("port", port).toString()
         val encrypted = encrypt(json)
         prefs.edit().putString(KEY_CONFIG, encrypted).apply()
         _hostFlow.value = host
     }
 
-    private fun loadHost(): String {
+    // 接続設定の取得（真実のソース）
+    fun loadConnectionSettings(): Pair<String, String> {
         return runCatching {
             val encrypted = prefs.getString(KEY_CONFIG, null)
             if (encrypted.isNullOrBlank()) {
-                DEFAULT_HOST
+                DEFAULT_HOST to "5001"
             } else {
                 val json = JSONObject(decrypt(encrypted))
-                json.optString("host", DEFAULT_HOST)
+                json.optString("host", DEFAULT_HOST) to json.optString("port", "5001")
             }
-        }.getOrDefault(DEFAULT_HOST)
+        }.getOrDefault(DEFAULT_HOST to "5001")
     }
 
+    // 再接続秒数の管理
+    fun loadReconnectSec(): Int = prefs.getInt("reconnect_sec", 5)
+
+    fun saveReconnectSec(sec: Int) {
+        prefs.edit().putInt("reconnect_sec", sec).apply()
+    }
+
+    // 設定のリセット
+    fun resetAll() {
+        prefs.edit().clear().apply()
+        _hostFlow.value = DEFAULT_HOST
+    }
+
+    // --- 暗号化関連 (変更なし) ---
     private fun encrypt(text: String): String {
         val cipher = Cipher.getInstance(TRANSFORMATION)
         cipher.init(Cipher.ENCRYPT_MODE, getOrCreateSecretKey())
@@ -52,11 +71,7 @@ class ConfigStore(context: Context) {
         val iv = bytes.copyOfRange(0, IV_SIZE)
         val encrypted = bytes.copyOfRange(IV_SIZE, bytes.size)
         val cipher = Cipher.getInstance(TRANSFORMATION)
-        cipher.init(
-            Cipher.DECRYPT_MODE,
-            getOrCreateSecretKey(),
-            GCMParameterSpec(TAG_LENGTH, iv)
-        )
+        cipher.init(Cipher.DECRYPT_MODE, getOrCreateSecretKey(), GCMParameterSpec(TAG_LENGTH, iv))
         return String(cipher.doFinal(encrypted), StandardCharsets.UTF_8)
     }
 
@@ -69,7 +84,7 @@ class ConfigStore(context: Context) {
         val spec = android.security.keystore.KeyGenParameterSpec.Builder(
             KEY_ALIAS,
             android.security.keystore.KeyProperties.PURPOSE_ENCRYPT or
-                android.security.keystore.KeyProperties.PURPOSE_DECRYPT
+            android.security.keystore.KeyProperties.PURPOSE_DECRYPT
         )
             .setBlockModes(android.security.keystore.KeyProperties.BLOCK_MODE_GCM)
             .setEncryptionPaddings(android.security.keystore.KeyProperties.ENCRYPTION_PADDING_NONE)

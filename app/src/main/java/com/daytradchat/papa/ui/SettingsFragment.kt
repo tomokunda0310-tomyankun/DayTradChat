@@ -1,5 +1,5 @@
 //app/src/main/java/com/daytradchat/papa/ui/SettingsFragment.kt
-//ver 2.17-43
+//ver 2.17-45
 package com.daytradchat.papa.ui
 
 import android.os.Bundle
@@ -50,14 +50,21 @@ class SettingsFragment : Fragment() {
 
         binding.buttonSaveReconnect.setOnClickListener {
             val host = binding.editHostInline.text?.toString().orEmpty().trim()
+            val port = binding.editPort.text?.toString().orEmpty().trim()
             val sec = binding.spinnerReconnectSec.selectedItem?.toString().orEmpty()
-            viewModel.saveSettingsAndReconnect(host, sec)
+            
+            if (host.isEmpty() || port.isEmpty()) {
+                // 必要に応じてトーストなどで警告を出す
+                return@setOnClickListener
+            }
+            viewModel.saveSettingsAndReconnect(host, port, sec)
         }
 
         binding.buttonReset.setOnClickListener { viewModel.resetSettingsAndReconnect() }
         binding.buttonSendWatch.setOnClickListener { viewModel.sendWatchCommand(binding.editSendCode.text?.toString().orEmpty().trim()) }
         binding.buttonApplyHolding.setOnClickListener { viewModel.applyHolding(binding.spinnerHoldingCode.selectedItem?.toString().orEmpty(), binding.editBuyPrice.text?.toString().orEmpty().trim()) }
 
+        // 2. 起動時にポート番号を表示する処理を追加
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch { viewModel.currentHost.collect { binding.editHostInline.setText(it) } }
@@ -68,6 +75,11 @@ class SettingsFragment : Fragment() {
                     }
                     codeAdapter.notifyDataSetChanged()
                 }}
+                launch { 
+                    viewModel.currentPort.collect { port -> 
+                        binding.editPort.setText(port) 
+                    } 
+                }
             }
         }
     }
