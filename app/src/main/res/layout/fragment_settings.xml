@@ -4,13 +4,11 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/bg_app">
-
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:padding="8dp">
-
         <TextView
             android:id="@+id/textVersion"
             android:layout_width="wrap_content"
@@ -18,7 +16,6 @@
             android:text="ver 2.17-45"
             android:textSize="10sp"
             android:textStyle="bold" />
-
         <!-- ホスト + ポート -->
         <LinearLayout
             android:layout_width="match_parent"
@@ -26,13 +23,11 @@
             android:layout_marginTop="6dp"
             android:gravity="center_vertical"
             android:orientation="horizontal">
-
             <TextView
                 android:layout_width="52dp"
                 android:layout_height="wrap_content"
                 android:text="ホスト"
                 android:textSize="10sp" />
-
             <EditText
                 android:id="@+id/editHostInline"
                 android:layout_width="0dp"
@@ -40,7 +35,6 @@
                 android:layout_weight="1"
                 android:padding="6dp"
                 android:textSize="10sp" />
-
             <EditText
                 android:id="@+id/editPort"
                 android:layout_width="60dp"
@@ -51,7 +45,6 @@
                 android:padding="6dp"
                 android:textSize="10sp" />
         </LinearLayout>
-
         <!-- 再接続設定 -->
         <LinearLayout
             android:layout_width="match_parent"
@@ -59,25 +52,21 @@
             android:layout_marginTop="6dp"
             android:gravity="center_vertical"
             android:orientation="horizontal">
-
             <TextView
                 android:layout_width="52dp"
                 android:layout_height="wrap_content"
                 android:text="再接続"
                 android:textSize="10sp" />
-
             <Spinner
                 android:id="@+id/spinnerReconnectSec"
                 android:layout_width="70dp"
                 android:layout_height="36dp" />
-
             <TextView
                 android:layout_width="20dp"
                 android:layout_height="wrap_content"
                 android:gravity="center"
                 android:text="秒"
                 android:textSize="10sp" />
-
             <Button
                 android:id="@+id/buttonSaveReconnect"
                 android:layout_width="0dp"
@@ -87,7 +76,6 @@
                 android:maxLines="1"
                 android:text="保存して再接続"
                 android:textSize="9sp" />
-
             <Button
                 android:id="@+id/buttonReset"
                 android:layout_width="110dp"
@@ -97,7 +85,6 @@
                 android:text="初期値に戻す"
                 android:textSize="9sp" />
         </LinearLayout>
-
         <!-- 銘柄コード送信 -->
         <LinearLayout
             android:layout_width="match_parent"
@@ -105,7 +92,6 @@
             android:layout_marginTop="6dp"
             android:gravity="center_vertical"
             android:orientation="horizontal">
-
             <EditText
                 android:id="@+id/editCode"
                 android:layout_width="0dp"
@@ -113,14 +99,12 @@
                 android:layout_weight="1"
                 android:hint="銘柄コード"
                 android:inputType="number" />
-
             <Button
                 android:id="@+id/btnSend"
                 android:layout_width="96dp"
                 android:layout_height="wrap_content"
                 android:text="送信" />
         </LinearLayout>
-
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -128,7 +112,6 @@
             android:text="サーバ送信（銘柄コードのみ）"
             android:textSize="10sp"
             android:textStyle="bold" />
-
         <EditText
             android:id="@+id/editSendCode"
             android:layout_width="match_parent"
@@ -138,7 +121,6 @@
             android:inputType="text"
             android:padding="6dp"
             android:textSize="10sp" />
-
         <Button
             android:id="@+id/buttonSendWatch"
             android:layout_width="match_parent"
@@ -147,7 +129,6 @@
             android:maxLines="1"
             android:text="送信"
             android:textSize="10sp" />
-
         <!-- 保有管理 -->
         <TextView
             android:layout_width="match_parent"
@@ -156,20 +137,17 @@
             android:text="投入 / 終了"
             android:textSize="10sp"
             android:textStyle="bold" />
-
         <Spinner
             android:id="@+id/spinnerHoldingCode"
             android:layout_width="match_parent"
             android:layout_height="36dp"
             android:layout_marginTop="4dp" />
-
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="40dp"
             android:layout_marginTop="4dp"
             android:gravity="center_vertical"
             android:orientation="horizontal">
-
             <EditText
                 android:id="@+id/editBuyPrice"
                 android:layout_width="0dp"
@@ -179,7 +157,6 @@
                 android:inputType="numberDecimal"
                 android:padding="6dp"
                 android:textSize="10sp" />
-
             <Button
                 android:id="@+id/buttonApplyHolding"
                 android:layout_width="96dp"
@@ -189,6 +166,5 @@
                 android:text="投入 / 終了"
                 android:textSize="10sp" />
         </LinearLayout>
-
     </LinearLayout>
 </ScrollView>
