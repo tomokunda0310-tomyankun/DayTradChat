@@ -1,5 +1,5 @@
 //app/src/main/java/com/daytradchat/papa/ui/SettingsFragment.kt
-//ver 2.17-40
+//ver 2.17-43
 package com.daytradchat.papa.ui
 
 import android.os.Bundle
@@ -7,17 +7,16 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
+import android.widget.Button
+import android.widget.EditText
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
-import com.daytradchat.papa.databinding.FragmentSettingsBinding
-import com.daytradchat.papa.network.SocketConfig
-import kotlinx.coroutines.launch
-import android.widget.Button
-import android.widget.EditText
 import com.daytradchat.papa.R
+import com.daytradchat.papa.databinding.FragmentSettingsBinding
+import kotlinx.coroutines.launch
 
 class SettingsFragment : Fragment() {
     private var _binding: FragmentSettingsBinding? = null
@@ -32,6 +31,9 @@ class SettingsFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        
+        binding.textVersion.text = "ver 2.17-41"
+
         val editCode = view.findViewById<EditText>(R.id.editCode)
         val btnSend = view.findViewById<Button>(R.id.btnSend)
 
@@ -42,17 +44,7 @@ class SettingsFragment : Fragment() {
                 editCode?.setText("")
             }
         }
-		
-        binding.textVersion.text = "ver 2.17-41"
-
-        val editCode = view.findViewById<EditText>(R.id.editCode)
-        val btnSend = view.findViewById<Button>(R.id.btnSend)
-
-        btnSend.setOnClickListener {
-            val code = editCode.text.toString()
-            viewModel.sendAddCode(code)
-        }
-		
+        
         codeAdapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, mutableListOf<String>())
         binding.spinnerHoldingCode.adapter = codeAdapter
 
@@ -62,27 +54,18 @@ class SettingsFragment : Fragment() {
             viewModel.saveSettingsAndReconnect(host, sec)
         }
 
-        binding.buttonReset.setOnClickListener {
-            viewModel.resetSettingsAndReconnect()
-        }
-
-        binding.buttonSendWatch.setOnClickListener {
-            val inputText = binding.editSendCode.text?.toString().orEmpty().trim()
-            viewModel.sendWatchCommand(inputText)
-        }
-
-        binding.buttonApplyHolding.setOnClickListener {
-            val codeLabel = binding.spinnerHoldingCode.selectedItem?.toString().orEmpty()
-            val buyPrice = binding.editBuyPrice.text?.toString().orEmpty().trim()
-            viewModel.applyHolding(codeLabel, buyPrice)
-        }
+        binding.buttonReset.setOnClickListener { viewModel.resetSettingsAndReconnect() }
+        binding.buttonSendWatch.setOnClickListener { viewModel.sendWatchCommand(binding.editSendCode.text?.toString().orEmpty().trim()) }
+        binding.buttonApplyHolding.setOnClickListener { viewModel.applyHolding(binding.spinnerHoldingCode.selectedItem?.toString().orEmpty(), binding.editBuyPrice.text?.toString().orEmpty().trim()) }
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                launch { viewModel.currentHost.collect { host -> binding.editHostInline.setText(host) } }
+                launch { viewModel.currentHost.collect { binding.editHostInline.setText(it) } }
                 launch { viewModel.availableCodes.collect { labels -> 
                     codeAdapter.clear()
-                    codeAdapter.addAll(labels)
+                    for (label in labels) {
+                        codeAdapter.add(label)
+                    }
                     codeAdapter.notifyDataSetChanged()
                 }}
             }

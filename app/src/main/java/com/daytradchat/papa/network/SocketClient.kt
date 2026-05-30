@@ -1,5 +1,5 @@
 //app/src/main/java/com/daytradchat/papa/network/SocketClient.kt
-//ver 2.17-40
+//ver 2.17-43
 package com.daytradchat.papa.network
 
 import android.util.Log
@@ -42,5 +42,4 @@ object SocketClient {
             Log.e("SocketClient", "Send Error", e)
         }
     }
-
 }
