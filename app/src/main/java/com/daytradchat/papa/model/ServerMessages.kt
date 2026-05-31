@@ -1,5 +1,5 @@
 //app/src/main/java/com/daytradchat/papa/model/ServerMessages.kt
-//ver 2.17-06
+//ver 2.18-01
 package com.daytradchat.papa.model
 
 data class DisclosureFlags(
@@ -16,8 +16,8 @@ data class MarketItem(
     val captured_at: String? = null,
     val price: Double = 0.0,
     val openPrice: Double? = 0.0,
-	val profitText: String? = null,
-	val signal_score: String? = null,
+    val profitText: String? = null,
+    val signal_score: String? = null,
     val change: Double? = null,
     val change_value: Double? = null,
     val change_rate: Double? = null,
@@ -41,7 +41,10 @@ data class SignalItem(
     val captured_at: String? = null,
     val price: Double? = 9.0,
     val openPrice: Double? = 0.0,
-	val signal_type: String? = null,
+
+    // ★ 判定区分（1〜5 / null）
+    val judge_type: Int? = null,
+
     val change: Double? = null,
     val change_value: Double? = null,
     val change_rate: Double? = null,

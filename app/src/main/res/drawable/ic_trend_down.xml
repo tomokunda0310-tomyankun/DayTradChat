@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ver 2.18-01 -->
+<!-- app/src/main/res/drawable/ic_trend_down.xml -->
+
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="12dp"
+    android:height="12dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!-- 青い下矢印 -->
+    <path
+        android:fillColor="#69F0AE"
+        android:pathData="M12,20 L18,14 H14 V4 H10 V14 H6 Z"/>
+</vector>

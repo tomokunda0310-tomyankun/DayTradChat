@@ -1,6 +1,5 @@
 //app/src/main/java/com/daytradchat/papa/ui/TradeViewModel.kt
-//ver 2.17-49 (TCP版対応)
-
+//ver 2.18-01
 package com.daytradchat.papa.ui
 
 import android.app.Application
@@ -75,17 +74,27 @@ class TradeViewModel(application: Application) : AndroidViewModel(application) {
     private val _systemLogItems = MutableStateFlow<List<LogLineUiModel>>(emptyList())
     val systemLogItems = _systemLogItems.asStateFlow()
 
+    // ★ NIKKEI225 用カード
+    private var indexCard: SignalCardUiModel? = null
+
     // TCP版 SocketClient
     private val socketClient = SocketClient(
         hostProvider = { _currentHost.value },
         portProvider = { _currentPort.value.toInt() },
         reconnectDelayMsProvider = { _reconnectSec.value.toLong() * 1000L },
+
         onLineReceived = { line ->
-            appendSystemLog("RECV: $line")   // ★ 生のままログに出す（復活）
+            appendSystemLog("RECV: $line")
             handleIncomingLine(line)
         },
-        onStatusChanged = { onSocketStatus(it) },
-        onSystemLog = { appendSystemLog(it) }
+
+        onStatusChanged = { status ->
+            onSocketStatus(status)
+        },
+
+        onSystemLog = { msg ->
+            appendSystemLog(msg)
+        }
     )
 
     init {
@@ -151,7 +160,7 @@ class TradeViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     // ==========================
-    // TCP イベント
+    // ソケットステータス
     // ==========================
 
     private fun onSocketStatus(status: String) {
@@ -213,6 +222,24 @@ class TradeViewModel(application: Application) : AndroidViewModel(application) {
                 if (idx.code == "NIKKEI225") {
                     val sign = if ((idx.change ?: 0.0) >= 0) "+" else ""
                     _statusLeft.value = "日経: ${idx.price} ($sign${idx.change})"
+
+                    indexCard = SignalCardUiModel(
+                        slotId = "index",
+                        code = idx.code ?: "",
+                        name = idx.name ?: "",
+                        signalType = "INDEX",
+                        score = idx.score?.toInt() ?: 0,
+                        price = idx.price,
+                        changeRate = idx.change_rate ?: 0.0,
+                        reasonShort = "",
+                        updatedAt = idx.captured_at ?: "",
+                        profitText = "",
+                        isEmpty = false,
+                        judgeType = null,
+                        trend = 0
+                    )
+
+                    rebuildSignalLists()
                 }
             }
 
@@ -280,10 +307,14 @@ class TradeViewModel(application: Application) : AndroidViewModel(application) {
 
         val uiModels = mutableListOf<SignalCardUiModel>()
         for (item in visibleItems) {
+            val code = item.code ?: ""
+            val history = priceHistoryMap[code] ?: mutableListOf()
+            val lastMove = history.getOrNull(0) ?: 0
+
             uiModels.add(
                 SignalCardUiModel(
                     slotId = "0",
-                    code = item.code ?: "",
+                    code = code,
                     name = item.name ?: "",
                     signalType = item.side ?: "",
                     score = item.score?.toInt() ?: 0,
@@ -292,7 +323,9 @@ class TradeViewModel(application: Application) : AndroidViewModel(application) {
                     reasonShort = item.reason_short ?: "",
                     updatedAt = item.price_time ?: "",
                     profitText = "",
-                    isEmpty = false
+                    isEmpty = false,
+                    judgeType = item.judge_type,
+                    trend = lastMove
                 )
             )
         }
@@ -303,6 +336,12 @@ class TradeViewModel(application: Application) : AndroidViewModel(application) {
         for (m in uiModels) {
             if (m.signalType == "LONG") longs.add(m)
             if (m.signalType == "SHORT") shorts.add(m)
+        }
+
+        // ★ NIKKEI225 を先頭に差し込む
+        indexCard?.let { idx ->
+            longs.add(0, idx)
+            shorts.add(0, idx)
         }
 
         _symbolsLong.value = longs
@@ -345,6 +384,7 @@ class TradeViewModel(application: Application) : AndroidViewModel(application) {
         rebuildSignalLists()
     }
 
+    // ★ 判定区分で上書きする PriceVisual
     fun getPriceVisual(code: String, currentPrice: Double): PriceVisual {
         val history = priceHistoryMap[code] ?: mutableListOf()
         val item = signalMap[code]
@@ -360,7 +400,7 @@ class TradeViewModel(application: Application) : AndroidViewModel(application) {
         val isReboundUp = history.size >= 3 && history[0] == 1 && history[1] == -1 && history[2] == -1
         val isReboundDown = history.size >= 3 && history[0] == -1 && history[1] == 1 && history[2] == 1
 
-        val bgColor = when {
+        val baseBg = when {
             isReboundUp -> R.color.bg_rebound_red
             isReboundDown -> R.color.bg_rebound_green
             history.size >= 4 -> R.color.bg_default_gray
@@ -369,7 +409,19 @@ class TradeViewModel(application: Application) : AndroidViewModel(application) {
             else -> R.color.bg_default_gray
         }
 
-        return PriceVisual(bgColor, textColor)
+        val judge = item?.judge_type
+        val judgeBg = when (judge) {
+            1 -> R.color.bg_judge_input
+            2 -> R.color.bg_judge_trade
+            3 -> R.color.bg_judge_hold
+            4 -> R.color.bg_judge_ng
+            5 -> R.color.bg_judge_ok
+            else -> null
+        }
+
+        val finalBg = judgeBg ?: baseBg
+
+        return PriceVisual(finalBg, textColor)
     }
 
     fun buildHistoryDialogText(code: String): String = "履歴データなし: $code"

@@ -1,11 +1,11 @@
 //app/src/main/java/com/daytradchat/papa/model/ClientMessages.kt
-//ver 2.16-22
+//ver 2.18-01
 package com.daytradchat.papa.model
 
 data class RegisterMessage(
     val type: String = "register",
     val client_name: String = "android_client",
-    val client_version: String = "2.16-22"
+    val client_version: String = "2.18-01"
 )
 
 data class GetNowMessage(

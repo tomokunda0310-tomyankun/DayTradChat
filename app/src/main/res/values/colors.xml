@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- ver 2.17-29 -->
+<!-- app/src/main/res/values/colors.xml -->
+<!-- ver 2.18-01 -->
 <resources>
     <color name="colorPrimary">#184B9B</color>
     <color name="colorPrimaryDark">#0F2A55</color>
@@ -19,4 +20,11 @@
     <color name="text_deep_red">#FF5252</color>   <color name="text_deep_green">#69F0AE</color> <color name="bg_default_gray">#262626</color> <color name="bg_light_red">#442C2C</color>    <color name="bg_light_green">#2C442C</color>  <color name="bg_rebound_red">#662222</color>  <color name="bg_rebound_green">#226622</color> <color name="buy_bg">#D9F5DF</color>
     <color name="sell_bg">#F9DEDC</color>
     <color name="skip_bg">#E6E6E6</color>
+
+    <color name="bg_judge_input">#334488FF</color>   <!-- 投入：青系 -->
+    <color name="bg_judge_trade">#33FF66CC</color>  <!-- 売買：ピンク系 -->
+    <color name="bg_judge_hold">#3380FFFF</color>   <!-- 保留：薄いシアン -->
+    <color name="bg_judge_ng">#33AA66FF</color>     <!-- NG：紫系 -->
+    <color name="bg_judge_ok">#7FFFD4</color>     <!-- OK：Aquamarine -->
+
 </resources>
