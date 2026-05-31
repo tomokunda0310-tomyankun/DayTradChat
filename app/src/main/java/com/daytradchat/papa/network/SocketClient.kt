@@ -1,44 +1,41 @@
 //app/src/main/java/com/daytradchat/papa/network/SocketClient.kt
-//ver 2.17-45 (class version for TradeViewModel)
-
+//ver 2.17-48
 package com.daytradchat.papa.network
 
-import android.util.Log
 import kotlinx.coroutines.*
-import okhttp3.*
-import okio.ByteString
-import java.util.concurrent.TimeUnit
+import java.io.BufferedReader
+import java.io.InputStreamReader
+import java.io.PrintWriter
+import java.net.InetSocketAddress
+import java.net.Socket
 
 class SocketClient(
     private val hostProvider: () -> String,
+    private val portProvider: () -> Int,
     private val reconnectDelayMsProvider: () -> Long,
     private val onLineReceived: (String) -> Unit,
     private val onStatusChanged: (String) -> Unit,
     private val onSystemLog: (String) -> Unit
 ) {
 
-    private var webSocket: WebSocket? = null
-    private var client: OkHttpClient? = null
-    private var reconnectJob: Job? = null
+    private var socket: Socket? = null
+    private var writer: PrintWriter? = null
+    private var reader: BufferedReader? = null
 
-    @Volatile
-    private var isActive = false
-
-    private fun buildUrl(): String {
-        val host = hostProvider()
-        return "ws://$host/ws"
-    }
+    private var job: Job? = null
 
     fun start() {
-        isActive = true
-        connect()
+        if (job != null) return
+
+        job = CoroutineScope(Dispatchers.IO).launch {
+            connectLoop()
+        }
     }
 
     fun stopAsync() {
-        isActive = false
-        reconnectJob?.cancel()
-        webSocket?.close(1000, "stop")
-        onSystemLog("Socket stopped")
+        job?.cancel()
+        job = null
+        closeSocket()
     }
 
     fun restart() {
@@ -46,66 +43,55 @@ class SocketClient(
         start()
     }
 
-    fun updateSettings(host: String, port: String) {
-        // TradeViewModel expects this, but URL is built only from host
-        onSystemLog("Settings updated: $host:$port")
+    private suspend fun connectLoop() {
+        while (job?.isActive == true) {
+            try {
+                val host = hostProvider()
+                val port = portProvider()
+
+                onStatusChanged("接続中…")
+                onSystemLog("CONNECT TCP: $host:$port")
+
+                socket = Socket()
+                socket!!.connect(InetSocketAddress(host, port), 5000)
+
+                writer = PrintWriter(socket!!.getOutputStream(), true)
+                reader = BufferedReader(InputStreamReader(socket!!.getInputStream()))
+
+                onStatusChanged("接続済")
+                onSystemLog("CONNECTED")
+
+                while (job?.isActive == true && socket!!.isConnected) {
+                    val line = reader?.readLine() ?: break
+                    onLineReceived(line)
+                }
+
+            } catch (e: Exception) {
+                onSystemLog("ERROR: ${e.message}")
+                onStatusChanged("切断")
+            }
+
+            closeSocket()
+            delay(reconnectDelayMsProvider())
+        }
     }
 
     fun sendRawLine(text: String) {
         try {
-            webSocket?.send(text)
-            onSystemLog("SEND: $text")
+            writer?.println(text)
+            writer?.flush()
         } catch (e: Exception) {
-            onSystemLog("Send error: ${e.message}")
+            onSystemLog("SEND ERROR: ${e.message}")
         }
     }
 
-    private fun connect() {
-        val url = buildUrl()
-        onSystemLog("CONNECT: $url")
+    private fun closeSocket() {
+        try { reader?.close() } catch (_: Exception) {}
+        try { writer?.close() } catch (_: Exception) {}
+        try { socket?.close() } catch (_: Exception) {}
 
-        client = OkHttpClient.Builder()
-            .pingInterval(20, TimeUnit.SECONDS)
-            .build()
-
-        val request = Request.Builder().url(url).build()
-
-        webSocket = client!!.newWebSocket(request, object : WebSocketListener() {
-
-            override fun onOpen(ws: WebSocket, response: Response) {
-                onSystemLog("OPEN")
-                onStatusChanged("接続済")
-            }
-
-            override fun onMessage(ws: WebSocket, text: String) {
-                onLineReceived(text)
-            }
-
-            override fun onMessage(ws: WebSocket, bytes: ByteString) {
-                onLineReceived(bytes.utf8())
-            }
-
-            override fun onFailure(ws: WebSocket, t: Throwable, response: Response?) {
-                onSystemLog("ERROR: ${t.message}")
-                onStatusChanged("切断")
-
-                if (isActive) scheduleReconnect()
-            }
-
-            override fun onClosed(ws: WebSocket, code: Int, reason: String) {
-                onSystemLog("CLOSED: $reason")
-                onStatusChanged("切断")
-            }
-        })
-    }
-
-    private fun scheduleReconnect() {
-        reconnectJob?.cancel()
-        reconnectJob = CoroutineScope(Dispatchers.IO).launch {
-            val delayMs = reconnectDelayMsProvider()
-            onSystemLog("Reconnecting in ${delayMs}ms")
-            delay(delayMs)
-            if (isActive) connect()
-        }
+        reader = null
+        writer = null
+        socket = null
     }
 }

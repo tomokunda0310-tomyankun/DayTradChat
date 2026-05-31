@@ -1,10 +1,10 @@
 //app/src/main/java/com/daytradchat/papa/ui/TradeViewModel.kt
-//ver 2.17-45
+//ver 2.17-49 (TCP版対応)
+
 package com.daytradchat.papa.ui
 
 import android.app.Application
 import android.content.Context
-import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.daytradchat.papa.R
@@ -18,10 +18,6 @@ import org.json.JSONObject
 import java.text.SimpleDateFormat
 import java.util.*
 import com.daytradchat.papa.network.ServerMessageParser
-import com.daytradchat.papa.model.ServerMessage
-import com.daytradchat.papa.model.SignalItem
-import com.daytradchat.papa.model.MarketItem
-
 
 data class ProfitDisplay(val text: String, val isPositive: Boolean? = null)
 data class PriceVisual(val bgColorRes: Int, val codeNameColorRes: Int)
@@ -79,13 +75,17 @@ class TradeViewModel(application: Application) : AndroidViewModel(application) {
     private val _systemLogItems = MutableStateFlow<List<LogLineUiModel>>(emptyList())
     val systemLogItems = _systemLogItems.asStateFlow()
 
-    // SocketClient（クラス版）
+    // TCP版 SocketClient
     private val socketClient = SocketClient(
         hostProvider = { _currentHost.value },
+        portProvider = { _currentPort.value.toInt() },
         reconnectDelayMsProvider = { _reconnectSec.value.toLong() * 1000L },
-        onLineReceived = { line -> onSocketMessage(line) },
-        onStatusChanged = { status -> onSocketStatus(status) },
-        onSystemLog = { msg -> appendSystemLog(msg) }
+        onLineReceived = { line ->
+            appendSystemLog("RECV: $line")   // ★ 生のままログに出す（復活）
+            handleIncomingLine(line)
+        },
+        onStatusChanged = { onSocketStatus(it) },
+        onSystemLog = { appendSystemLog(it) }
     )
 
     init {
@@ -93,7 +93,7 @@ class TradeViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     // ==========================
-    // WebSocket 接続
+    // TCP 接続
     // ==========================
 
     fun startSocket() = socketClient.start()
@@ -112,7 +112,6 @@ class TradeViewModel(application: Application) : AndroidViewModel(application) {
             _currentPort.value = newPort
             _reconnectSec.value = sec
 
-            socketClient.updateSettings(newHost, newPort)
             socketClient.restart()
         }
     }
@@ -152,13 +151,8 @@ class TradeViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     // ==========================
-    // WebSocket イベント
+    // TCP イベント
     // ==========================
-
-    private fun onSocketMessage(text: String) {
-        appendSystemLog("RECV: $text")
-        handleIncomingLine(text)
-    }
 
     private fun onSocketStatus(status: String) {
         _statusLeft.value = status
@@ -395,4 +389,3 @@ class TradeViewModel(application: Application) : AndroidViewModel(application) {
         stopSocket()
     }
 }
-
